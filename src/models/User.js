@@ -12,12 +12,25 @@ const userSchema = new Schema({
       lowercase: true,
       unique: true
    },
+   telephone: {
+      type: String,
+      default: null
+   },
+   gender: {
+      type: String,
+      default: null
+   },
+   birthDate: {
+      type: Date,
+      default: null
+   },
    password: {
       type: String,
       select: false,
       required: false,
       default: null
    },
+
    createdAt: {
       type: Date,
       default: new Date(),

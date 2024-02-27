@@ -4,7 +4,8 @@ class MedicaoController {
 
    list = async (req, res) => {
       try {
-         const response = await Medicao.find().exec()
+         const { userId } = req.params
+         const response = await Medicao.find({ userId: userId }).exec()
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ msg: 'Hello Orçamento' })
@@ -13,18 +14,30 @@ class MedicaoController {
 
    add = async (req, res) => {
       try {
-         const { medicaoData } = req.body;
-         const response = await Medicao.create(medicaoData)
+         const { userId } = req.params
+         const { marking } = req.body;
+
+         marking.userId = userId;
+
+         if (parseInt(marking?.diet) > 0) {
+            marking.diet = true
+         } else {
+            marking.diet = false
+         }
+
+         const response = await Medicao.create(marking)
          res.status(201).json(response)
       } catch (err) {
+         console.log(err)
+
          res.status(400).json({ success: false, error: err.response })
       }
    }
 
    readById = async (req, res) => {
       try {
-         const { medicaoData } = req.params
-         const response = await Medicao.findById(medicaoData).exec()
+         const { makingId } = req.params
+         const response = await Medicao.findById(makingId).exec()
 
          res.status(200).json(response)
       } catch (error) {
@@ -34,9 +47,9 @@ class MedicaoController {
 
    update = async (req, res) => {
       try {
-         const { medicaoId } = req.params
-         const { medicaoData } = req.body
-         const response = await Medicao.findByIdAndUpdate(medicaoId, medicaoData, { new: true }).exec()
+         const { makingId } = req.params
+         const { making } = req.body
+         const response = await Medicao.findByIdAndUpdate(makingId, making, { new: true }).exec()
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ error })
@@ -45,9 +58,8 @@ class MedicaoController {
 
    delete = async (req, res) => {
       try {
-         const { medicaoId } = req.params
-         const response = await Medicao.findByIdAndDelete(medicaoId).exec()
-
+         const { makingId } = req.params
+         const response = await Medicao.findByIdAndDelete(makingId).exec()
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ error })
