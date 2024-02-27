@@ -18,6 +18,7 @@ routes.patch('/user/password/:id', checkAuth, UserController.updatePassword)
 
 //CategoryHome Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)
+routes.get('/marking/list/media/:userId', checkAuth, MedicaoController.listMedia)
 routes.post('/marking/create/:userId', checkAuth, MedicaoController.add)
 routes.delete('/marking/delete/:makingId', checkAuth, MedicaoController.delete)
 routes.patch('/marking/update/:id', checkAuth, MedicaoController.update)

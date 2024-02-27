@@ -77,10 +77,6 @@ class UserController {
    login = async (req, res) => {
 
       const { email, password } = req.body
-
-      console.log(email, password)
-
-
       try {
          const user = await UserModel.findOne({ email })
             .select('+password')
@@ -96,7 +92,6 @@ class UserController {
             process.env.NEXT_PUBLIC_JWT_KEY,
          )
          user.token = jwtToken
-         console.log(user)
 
          return res.status(200).json(user)
       } catch (error) {
@@ -108,7 +103,6 @@ class UserController {
    readById = async (req, res) => {
       try {
          const { id } = req.params
-         console.log(id)
          const user = await UserModel.findById(id)
          res.status(200).json(user)
       } catch (error) {
