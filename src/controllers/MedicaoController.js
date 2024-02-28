@@ -5,7 +5,17 @@ class MedicaoController {
    list = async (req, res) => {
       try {
          const { userId } = req.params
-         const response = await Medicao.find({ userId: userId }).exec()
+         const { page = 1, limit = 10 } = req.query;
+
+         const pageNumber = parseInt(page);
+         const limitNumber = parseInt(limit);
+
+         const skip = (pageNumber - 1) * limitNumber;
+         const response = await Medicao.find({ userId: userId })
+            .skip(skip)
+            .limit(limitNumber)
+            .exec();
+
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ msg: 'Hello Orçamento' })
@@ -15,9 +25,11 @@ class MedicaoController {
    listMedia = async (req, res) => {
       try {
          const { userId } = req.params
+         const { year } = req.query
          const markings = await Medicao.find({ userId: userId }).exec()
-         const jejum = markings?.filter(item => item?.period?.includes('Jejum'))
-         const aposLanch = markings?.filter(item => !item?.period?.includes('Jejum'))
+         const targetYear = parseInt(year);
+         const jejum = markings?.filter(item => item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
+         const aposLanch = markings?.filter(item => !item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
          res.status(200).json({ jejum, aposLanch })
       } catch (error) {
          res.status(400).json({ msg: 'Hello Orçamento' })
@@ -65,8 +77,20 @@ class MedicaoController {
    update = async (req, res) => {
       try {
          const { makingId } = req.params
-         const { making } = req.body
-         const response = await Medicao.findByIdAndUpdate(makingId, making, { new: true }).exec()
+         const { marking } = req.body
+         if (marking.date) {
+            const markingDate = new Date(marking?.date);
+            markingDate.setHours(12, 0, 0, 0);
+            marking.date = markingDate;
+         }
+
+         if (parseInt(marking?.diet) > 0) {
+            marking.diet = true
+         } else {
+            marking.diet = false
+         }
+
+         const response = await Medicao.findByIdAndUpdate(makingId, marking, { new: true }).exec()
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ error })
