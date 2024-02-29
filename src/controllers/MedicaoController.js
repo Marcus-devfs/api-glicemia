@@ -15,11 +15,19 @@ class MedicaoController {
    listMedia = async (req, res) => {
       try {
          const { userId } = req.params
-         const { year } = req.query
+         const { year = 'todos' } = req.query
          const markings = await Medicao.find({ userId: userId }).exec()
-         const targetYear = parseInt(year);
-         const jejum = markings?.filter(item => item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
-         const aposLanch = markings?.filter(item => !item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
+         let jejum;
+         let aposLanch;
+
+         if (year !== 'todos') {
+            const targetYear = parseInt(year);
+            jejum = markings?.filter(item => item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
+            aposLanch = markings?.filter(item => !item?.period?.includes('Jejum') && new Date(item.date).getFullYear() === targetYear);
+         } else {
+            jejum = markings?.filter(item => item?.period?.includes('Jejum'));
+            aposLanch = markings?.filter(item => !item?.period?.includes('Jejum'));
+         }
          res.status(200).json({ jejum, aposLanch })
       } catch (error) {
          res.status(400).json({ msg: 'Hello Orçamento' })
