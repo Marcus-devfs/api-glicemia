@@ -5,17 +5,7 @@ class MedicaoController {
    list = async (req, res) => {
       try {
          const { userId } = req.params
-         const { page = 1, limit = 10 } = req.query;
-
-         const pageNumber = parseInt(page);
-         const limitNumber = parseInt(limit);
-
-         const skip = (pageNumber - 1) * limitNumber;
-         const response = await Medicao.find({ userId: userId })
-            .skip(skip)
-            .limit(limitNumber)
-            .exec();
-
+         const response = await Medicao.find({ userId: userId }).exec();
          res.status(200).json(response)
       } catch (error) {
          res.status(400).json({ msg: 'Hello Orçamento' })

@@ -39,6 +39,12 @@ const userSchema = new Schema({
    token: {
       type: 'String',
    },
+
+   photoPerfil: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FileUser",
+      default: null,
+   }],
 });
 
 const User = mongoose.model("User", userSchema);

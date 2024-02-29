@@ -79,7 +79,7 @@ class UserController {
       const { email, password } = req.body
       try {
          const user = await UserModel.findOne({ email })
-            .select('+password')
+            .select('+password').populate('photoPerfil')
 
          const result = await bcrypt.compare(password, user.password)
 
@@ -103,7 +103,7 @@ class UserController {
    readById = async (req, res) => {
       try {
          const { id } = req.params
-         const user = await UserModel.findById(id)
+         const user = await UserModel.findById(id).populate('photoPerfil')
          res.status(200).json(user)
       } catch (error) {
          res.status(200).json({ error })
@@ -114,7 +114,7 @@ class UserController {
       try {
 
          const { userId } = req.currentUser
-         const user = await UserModel.findOne({ _id: userId })
+         const user = await UserModel.findOne({ _id: userId }).populate('photoPerfil')
 
          if (user) {
             const jwtToken = jwt.sign({ userId: user._id }, process.env.NEXT_PUBLIC_JWT_KEY);
@@ -154,24 +154,24 @@ class UserController {
    updatePassword = async (req, res) => {
 
       const { id } = req.params
-      const { userData } = req.body
-      const { newPassword } = userData
+      const { passwordData } = req.body
 
       try {
 
          const user = await UserModel.findById(id)
             .select('+password')
 
-         const result = await bcrypt.compare(userData.password, user.password)
+         const result = await bcrypt.compare(passwordData?.password, user?.password)
 
-         if (!result) return res.status(401).send({ msg: 'Senha atual inválida' })
+         if (!result) return res.status(422).send({ msg: 'Senha atual inválida' })
 
-         const newPass = newPassword
+         const newPass = passwordData?.newPassword
          const password = await bcrypt.hash(newPass, 10)
          const response = await UserModel.findByIdAndUpdate(id, { password: password }, { new: true })
 
-         res.status(201).json(response)
+         res.status(200).json(response)
       } catch (error) {
+         console.log('erro aqui', error)
          res.status(400).json(error)
       }
    }
