@@ -3,8 +3,10 @@ const UserController = require('../controllers/UserController')
 const { checkAuth } = require('../helpers/auth/checkAuth')
 const MedicaoController = require('../controllers/MedicaoController')
 const FileUserController = require('../controllers/FileUserController')
+const PushController = require('../controllers/PushController')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
+const { checkCron } = require('../helpers/auth/checkCron')
 //User Routes
 routes.get('/', async (req, res) => {
     return res.status(200).json({ msg: 'Public Route' })
@@ -27,6 +29,14 @@ routes.patch('/marking/update/:makingId', checkAuth, MedicaoController.update)
 
 //FileUser
 routes.post('/file/upload', multer(multerConfig).single('file'), FileUserController.upload)
+
+// Push notifications
+routes.get('/push/vapid-key', PushController.getVapidKey)
+routes.post('/push/subscribe', checkAuth, PushController.subscribe)
+routes.delete('/push/subscribe', checkAuth, PushController.unsubscribe)
+routes.get('/push/reminders/:userId', checkAuth, PushController.getReminders)
+routes.patch('/push/reminders/:userId', checkAuth, PushController.updateReminders)
+routes.post('/push/reminders', checkCron, PushController.sendReminders)
 
 
 module.exports = routes 

@@ -45,6 +45,31 @@ const userSchema = new Schema({
       ref: "FileUser",
       default: null,
    }],
+
+   pushSubscriptions: [{
+      endpoint: { type: String, required: true },
+      keys: {
+         p256dh: { type: String, required: true },
+         auth: { type: String, required: true },
+      },
+      createdAt: { type: Date, default: Date.now },
+   }],
+
+   preferences: {
+      notificationsEnabled: { type: Boolean, default: false },
+      timezone: { type: String, default: "America/Sao_Paulo" },
+      reminders: [{
+         id: String,
+         period: String,
+         time: String,
+         label: String,
+      }],
+   },
+
+   notificationState: {
+      date: String,
+      sentSlots: [String],
+   },
 });
 
 const User = mongoose.model("User", userSchema);
