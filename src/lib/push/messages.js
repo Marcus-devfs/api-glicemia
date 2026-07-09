@@ -16,7 +16,7 @@ function buildPushPayload(user, reminder) {
   const greeting = firstName ? `${firstName}, ` : "";
 
   return {
-    title: "Hora de medir a glicemia 💗",
+    title: "GestaGlic · Hora de medir a glicemia 💗",
     body: `${icon} ${greeting}${reminder.label}`,
     url: "/medicao",
   };
