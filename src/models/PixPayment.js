@@ -19,6 +19,11 @@ const pixPaymentSchema = new Schema({
   asaasCheckoutId: { type: String, default: null },
   asaasPaymentId: { type: String, default: null },
   checkoutUrl: { type: String, default: null },
+  paymentMethod: {
+    type: String,
+    enum: ["pix", "card"],
+    default: "pix",
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -30,7 +35,7 @@ const pixPaymentSchema = new Schema({
 });
 
 pixPaymentSchema.index({ userId: 1, status: 1 });
-pixPaymentSchema.index({ asaasCheckoutId: 1 });
+pixPaymentSchema.index({ asaasPaymentId: 1 });
 
 const PixPayment = mongoose.model("PixPayment", pixPaymentSchema);
 

@@ -1,9 +1,15 @@
 const UserModel = require("../models/User");
 const PixPaymentModel = require("../models/PixPayment");
 const { PREMIUM_PRICE } = require("../config/premium");
+const { getOrCreateCustomer } = require("../lib/asaas/customer");
 const {
-  createPremiumCheckout,
+  createCardCheckout,
+  createPixPayment,
+  getPixQrCode,
+  getPayment,
   buildCheckoutUrl,
+  isPaymentPaid,
+  isSandbox,
 } = require("../lib/asaas/client");
 const { activatePremium } = require("../lib/asaas/activatePremium");
 
@@ -13,8 +19,92 @@ const PAID_EVENTS = new Set([
   "CHECKOUT_PAID",
 ]);
 
+const PIX_REUSE_MS = 23 * 60 * 60 * 1000; // QR Pix válido no mesmo dia
+
 class PaymentController {
-  createCheckout = async (req, res) => {
+  /** Pix transparente — QR Code no app */
+  createPix = async (req, res) => {
+    try {
+      const userId = req.currentUser.userId;
+      const user = await UserModel.findById(userId);
+
+      if (!user) return res.status(404).json({ msg: "Usuária não encontrada" });
+      if (user.is_premium) {
+        return res.status(400).json({ msg: "Você já tem acesso premium" });
+      }
+
+      let record = await PixPaymentModel.findOne({
+        userId,
+        paymentMethod: "pix",
+        status: "pending",
+        asaasPaymentId: { $ne: null },
+        createdAt: { $gte: new Date(Date.now() - PIX_REUSE_MS) },
+      }).sort({ createdAt: -1 });
+
+      let paymentId = record?.asaasPaymentId;
+
+      if (paymentId) {
+        const remote = await getPayment(paymentId);
+        if (isPaymentPaid(remote.status)) {
+          await activatePremium(userId, { asaasPaymentId: paymentId });
+          const updated = await UserModel.findById(userId);
+          return res.status(200).json({
+            alreadyPaid: true,
+            is_premium: updated?.is_premium ?? true,
+          });
+        }
+        if (remote.status === "PENDING") {
+          const qr = await getPixQrCode(paymentId);
+          return res.status(200).json({
+            paymentId,
+            encodedImage: qr.encodedImage,
+            payload: qr.payload,
+            expirationDate: qr.expirationDate,
+            amount: PREMIUM_PRICE,
+            sandbox: isSandbox(),
+          });
+        }
+      }
+
+      const customerId = await getOrCreateCustomer(user);
+      const payment = await createPixPayment(customerId, userId);
+      paymentId = payment.id;
+
+      const qr = await getPixQrCode(paymentId);
+
+      if (record) {
+        record.asaasPaymentId = paymentId;
+        record.amount = PREMIUM_PRICE;
+        record.status = "pending";
+        await record.save();
+      } else {
+        await PixPaymentModel.create({
+          userId,
+          amount: PREMIUM_PRICE,
+          status: "pending",
+          paymentMethod: "pix",
+          asaasPaymentId: paymentId,
+        });
+      }
+
+      res.status(200).json({
+        paymentId,
+        encodedImage: qr.encodedImage,
+        payload: qr.payload,
+        expirationDate: qr.expirationDate,
+        amount: PREMIUM_PRICE,
+        sandbox: isSandbox(),
+      });
+    } catch (error) {
+      console.log("createPix error:", error.message, error.asaas);
+      res.status(500).json({
+        msg: error.message || "Erro ao gerar Pix",
+      });
+    }
+  };
+
+  /** Checkout hospedado — somente cartão */
+  createCardCheckout = async (req, res) => {
     try {
       const userId = req.currentUser.userId;
       const user = await UserModel.findById(userId);
@@ -26,7 +116,8 @@ class PaymentController {
 
       const recentPending = await PixPaymentModel.findOne({
         userId,
-        status: { $in: ["pending", "generated"] },
+        paymentMethod: "card",
+        status: "pending",
         checkoutUrl: { $ne: null },
         createdAt: { $gte: new Date(Date.now() - 55 * 60 * 1000) },
       }).sort({ createdAt: -1 });
@@ -36,17 +127,19 @@ class PaymentController {
       }
 
       const appUrl = process.env.APP_URL || "https://app.gestaglic.com.br";
-      const checkout = await createPremiumCheckout(user, appUrl);
+      const checkout = await createCardCheckout(userId, appUrl);
       const checkoutUrl = buildCheckoutUrl(checkout);
 
       let payment = await PixPaymentModel.findOne({
         userId,
         status: { $in: ["pending", "generated"] },
+        paymentMethod: "card",
         checkoutUrl: null,
       }).sort({ createdAt: -1 });
 
       if (payment) {
         payment.status = "pending";
+        payment.paymentMethod = "card";
         payment.asaasCheckoutId = checkout.id;
         payment.checkoutUrl = checkoutUrl;
         payment.amount = PREMIUM_PRICE;
@@ -56,6 +149,7 @@ class PaymentController {
           userId,
           amount: PREMIUM_PRICE,
           status: "pending",
+          paymentMethod: "card",
           asaasCheckoutId: checkout.id,
           checkoutUrl,
         });
@@ -63,12 +157,15 @@ class PaymentController {
 
       res.status(200).json({ checkoutUrl });
     } catch (error) {
-      console.log("createCheckout error:", error.message, error.asaas);
+      console.log("createCardCheckout error:", error.message, error.asaas);
       res.status(500).json({
         msg: error.message || "Erro ao criar checkout",
       });
     }
   };
+
+  /** @deprecated use createCardCheckout */
+  createCheckout = (req, res) => this.createCardCheckout(req, res);
 
   asaasWebhook = async (req, res) => {
     try {
@@ -111,21 +208,46 @@ class PaymentController {
   getPremiumStatus = async (req, res) => {
     try {
       const userId = req.currentUser.userId;
-      const user = await UserModel.findById(userId).select(
+      let user = await UserModel.findById(userId).select(
         "is_premium pdf_downloads_count"
       );
 
       if (!user) return res.status(404).json({ msg: "Usuária não encontrada" });
 
-      const pending = await PixPaymentModel.findOne({
+      const pendingPix = await PixPaymentModel.findOne({
         userId,
+        paymentMethod: "pix",
+        status: "pending",
+        asaasPaymentId: { $ne: null },
+      }).sort({ createdAt: -1 });
+
+      if (!user.is_premium && pendingPix?.asaasPaymentId) {
+        try {
+          const remote = await getPayment(pendingPix.asaasPaymentId);
+          if (isPaymentPaid(remote.status)) {
+            await activatePremium(userId, {
+              asaasPaymentId: pendingPix.asaasPaymentId,
+            });
+            user = await UserModel.findById(userId).select(
+              "is_premium pdf_downloads_count"
+            );
+          }
+        } catch (syncErr) {
+          console.log("getPremiumStatus sync:", syncErr.message);
+        }
+      }
+
+      const pendingCard = await PixPaymentModel.findOne({
+        userId,
+        paymentMethod: "card",
         status: { $in: ["pending", "generated"] },
       }).sort({ createdAt: -1 });
 
       res.status(200).json({
         is_premium: user.is_premium,
         pdf_downloads_count: user.pdf_downloads_count,
-        pendingCheckoutUrl: pending?.checkoutUrl || null,
+        pendingCheckoutUrl: pendingCard?.checkoutUrl || null,
+        sandbox: isSandbox(),
       });
     } catch (error) {
       res.status(500).json({ msg: "Erro" });

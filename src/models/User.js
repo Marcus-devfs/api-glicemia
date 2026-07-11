@@ -81,6 +81,11 @@ const userSchema = new Schema({
       default: false,
    },
 
+   asaasCustomerId: {
+      type: String,
+      default: null,
+   },
+
    is_admin: {
       type: Boolean,
       default: false,

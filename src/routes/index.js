@@ -30,7 +30,9 @@ routes.post('/user/pdf-download/:id', checkAuth, UserController.registerPdfDownl
 
 // Pagamentos Asaas
 routes.post('/payments/webhook/asaas', PaymentController.asaasWebhook)
-routes.post('/payments/checkout', checkAuth, PaymentController.createCheckout)
+routes.post('/payments/pix', checkAuth, PaymentController.createPix)
+routes.post('/payments/card-checkout', checkAuth, PaymentController.createCardCheckout)
+routes.post('/payments/checkout', checkAuth, PaymentController.createCardCheckout)
 routes.get('/payments/premium-status', checkAuth, PaymentController.getPremiumStatus)
 
 //Marking Routes

@@ -5,6 +5,12 @@ const PLACEHOLDER_IMAGE_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 function getBaseUrl() {
+  if (process.env.ASAAS_SANDBOX === "true") {
+    return "https://api-sandbox.asaas.com/v3";
+  }
+  if (process.env.ASAAS_SANDBOX === "false") {
+    return "https://api.asaas.com/v3";
+  }
   const key = process.env.ASAAS_API_KEY || "";
   if (key.includes("_prod_") || key.includes("$aact_prod")) {
     return "https://api.asaas.com/v3";
@@ -12,10 +18,8 @@ function getBaseUrl() {
   return "https://api-sandbox.asaas.com/v3";
 }
 
-function formatPhone(phone) {
-  if (!phone) return undefined;
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 10 ? digits : undefined;
+function isSandbox() {
+  return getBaseUrl().includes("sandbox");
 }
 
 async function asaasRequest(method, path, body) {
@@ -47,20 +51,27 @@ async function asaasRequest(method, path, body) {
   return data;
 }
 
-function buildCheckoutUrl(checkout) {
-  if (checkout.link) return checkout.link;
-  const id = checkout.id;
-  const isProd = getBaseUrl().includes("api.asaas.com");
-  const host = isProd ? "https://www.asaas.com" : "https://sandbox.asaas.com";
-  return `${host}/checkoutSession/show/${id}`;
+function dueDatePlusDays(days = 1) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
 }
 
-async function createPremiumCheckout(user, appUrl) {
+function buildCheckoutUrl(checkout) {
+  if (checkout.link) return checkout.link;
+  const host = isSandbox()
+    ? "https://sandbox.asaas.com"
+    : "https://www.asaas.com";
+  return `${host}/checkoutSession/show/${checkout.id}`;
+}
+
+/** Checkout hospedado — somente cartão de crédito */
+async function createCardCheckout(userId, appUrl) {
   const payload = {
-    billingTypes: ["PIX", "CREDIT_CARD"],
+    billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["DETACHED"],
     minutesToExpire: 60,
-    externalReference: user._id.toString(),
+    externalReference: userId.toString(),
     callback: {
       successUrl: `${appUrl}/relatorio?premium=success`,
       cancelUrl: `${appUrl}/relatorio?premium=cancel`,
@@ -75,18 +86,45 @@ async function createPremiumCheckout(user, appUrl) {
         imageBase64: PLACEHOLDER_IMAGE_BASE64,
       },
     ],
-    customerData: {
-      name: user.name,
-      email: user.email,
-      ...(formatPhone(user.telephone) && { phone: formatPhone(user.telephone) }),
-    },
   };
 
   return asaasRequest("POST", "/checkouts", payload);
 }
 
+/** Cobrança Pix transparente */
+async function createPixPayment(customerId, userId) {
+  return asaasRequest("POST", "/payments", {
+    customer: customerId,
+    billingType: "PIX",
+    value: PREMIUM_PRICE,
+    dueDate: dueDatePlusDays(1),
+    externalReference: userId.toString(),
+    description: "GestaGlic Premium - PDFs ilimitados",
+  });
+}
+
+async function getPixQrCode(paymentId) {
+  return asaasRequest("GET", `/payments/${paymentId}/pixQrCode`);
+}
+
+async function getPayment(paymentId) {
+  return asaasRequest("GET", `/payments/${paymentId}`);
+}
+
+const PAID_STATUSES = new Set(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]);
+
+function isPaymentPaid(status) {
+  return PAID_STATUSES.has(status);
+}
+
 module.exports = {
   asaasRequest,
-  createPremiumCheckout,
+  createCardCheckout,
+  createPixPayment,
+  getPixQrCode,
+  getPayment,
   buildCheckoutUrl,
+  isPaymentPaid,
+  isSandbox,
+  getBaseUrl,
 };
