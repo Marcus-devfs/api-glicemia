@@ -4,6 +4,8 @@ const { checkAuth } = require('../helpers/auth/checkAuth')
 const MedicaoController = require('../controllers/MedicaoController')
 const FileUserController = require('../controllers/FileUserController')
 const PushController = require('../controllers/PushController')
+const AdminController = require('../controllers/AdminController')
+const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
 const { checkCron } = require('../helpers/auth/checkCron')
@@ -40,6 +42,14 @@ routes.delete('/push/subscribe', checkAuth, PushController.unsubscribe)
 routes.get('/push/reminders/:userId', checkAuth, PushController.getReminders)
 routes.patch('/push/reminders/:userId', checkAuth, PushController.updateReminders)
 routes.post('/push/reminders', checkCron, PushController.sendReminders)
+
+// Admin
+routes.get('/admin/me', checkAuth, checkAdmin, AdminController.me)
+routes.get('/admin/dashboard', checkAuth, checkAdmin, AdminController.dashboard)
+routes.get('/admin/users', checkAuth, checkAdmin, AdminController.listUsers)
+routes.get('/admin/users/:id', checkAuth, checkAdmin, AdminController.getUserDetail)
+routes.patch('/admin/users/:id/premium', checkAuth, checkAdmin, AdminController.setPremium)
+routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayments)
 
 
 module.exports = routes 

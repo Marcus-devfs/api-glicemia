@@ -4,6 +4,8 @@ const UserModel = require('../models/User')
 const bcrypt = require('bcrypt')
 const { sendMail } = require('../lib/email/sendMail')
 const { passwordResetHtml } = require('../lib/email/templates/passwordReset')
+const PixPaymentModel = require('../models/PixPayment')
+const { logAccess } = require('../lib/accessLog')
 
 class UserController {
 
@@ -73,6 +75,8 @@ class UserController {
 
          res.status(201).json(newUser)
 
+         logAccess(req, newUser._id, 'register', { email: normalizedEmail })
+
       } catch (error) {
          console.log(error)
          res.status(500).json({ error: error.response })
@@ -103,6 +107,8 @@ class UserController {
          )
          user.token = jwtToken
 
+         logAccess(req, user._id, 'login')
+
          return res.status(200).json(user)
       } catch (error) {
          console.log(error)
@@ -129,6 +135,7 @@ class UserController {
          if (user) {
             const jwtToken = jwt.sign({ userId: user._id }, process.env.NEXT_PUBLIC_JWT_KEY);
             user.token = jwtToken
+            logAccess(req, user._id, 'session_restore')
             return res.status(200).json(user)
          }
 
@@ -201,6 +208,7 @@ class UserController {
          }
 
          if (user.is_premium) {
+            logAccess(req, user._id, 'pdf_download', { premium: true })
             return res.status(200).json({
                allowed: true,
                pdf_downloads_count: user.pdf_downloads_count,
@@ -209,6 +217,14 @@ class UserController {
          }
 
          if (user.pdf_downloads_count >= 2) {
+            const existing = await PixPaymentModel.findOne({
+               userId: id,
+               status: 'generated',
+            })
+            if (!existing) {
+               await PixPaymentModel.create({ userId: id, amount: 9.9, status: 'generated' })
+            }
+
             return res.status(403).json({
                allowed: false,
                limit_reached: true,
@@ -219,6 +235,10 @@ class UserController {
 
          user.pdf_downloads_count += 1
          await user.save()
+
+         logAccess(req, user._id, 'pdf_download', {
+            count: user.pdf_downloads_count,
+         })
 
          return res.status(200).json({
             allowed: true,

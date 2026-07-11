@@ -81,6 +81,11 @@ const userSchema = new Schema({
       default: false,
    },
 
+   is_admin: {
+      type: Boolean,
+      default: false,
+   },
+
    passwordResetToken: {
       type: String,
       select: false,
