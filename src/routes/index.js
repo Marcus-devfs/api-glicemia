@@ -5,6 +5,8 @@ const MedicaoController = require('../controllers/MedicaoController')
 const FileUserController = require('../controllers/FileUserController')
 const PushController = require('../controllers/PushController')
 const AdminController = require('../controllers/AdminController')
+const ContentController = require('../controllers/ContentController')
+const ForumController = require('../controllers/ForumController')
 const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
@@ -50,6 +52,32 @@ routes.get('/admin/users', checkAuth, checkAdmin, AdminController.listUsers)
 routes.get('/admin/users/:id', checkAuth, checkAdmin, AdminController.getUserDetail)
 routes.patch('/admin/users/:id/premium', checkAuth, checkAdmin, AdminController.setPremium)
 routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayments)
+
+// Conteúdo público (blog/dicas)
+routes.get('/articles', ContentController.listArticles)
+routes.get('/articles/:slug', ContentController.getArticleBySlug)
+
+// Admin — conteúdo
+routes.get('/admin/articles', checkAuth, checkAdmin, AdminController.listArticles)
+routes.post('/admin/articles', checkAuth, checkAdmin, AdminController.createArticle)
+routes.patch('/admin/articles/:id', checkAuth, checkAdmin, AdminController.updateArticle)
+routes.delete('/admin/articles/:id', checkAuth, checkAdmin, AdminController.deleteArticle)
+
+// Fórum (usuárias logadas)
+routes.get('/forum/posts', checkAuth, ForumController.listPosts)
+routes.post('/forum/posts', checkAuth, ForumController.createPost)
+routes.get('/forum/posts/:id', checkAuth, ForumController.getPost)
+routes.post('/forum/posts/:id/comments', checkAuth, ForumController.addComment)
+routes.post('/forum/posts/:id/support', checkAuth, ForumController.toggleSupport)
+routes.post('/forum/posts/:id/report', checkAuth, ForumController.reportPost)
+routes.post('/forum/comments/:id/report', checkAuth, ForumController.reportComment)
+
+// Admin — fórum
+routes.get('/admin/forum/posts', checkAuth, checkAdmin, AdminController.listForumPosts)
+routes.patch('/admin/forum/posts/:id', checkAuth, checkAdmin, AdminController.updateForumPost)
+routes.delete('/admin/forum/posts/:id', checkAuth, checkAdmin, AdminController.deleteForumPost)
+routes.get('/admin/forum/reports', checkAuth, checkAdmin, AdminController.listForumReports)
+routes.patch('/admin/forum/reports/:id', checkAuth, checkAdmin, AdminController.resolveForumReport)
 
 
 module.exports = routes 
