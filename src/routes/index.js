@@ -7,6 +7,7 @@ const PushController = require('../controllers/PushController')
 const AdminController = require('../controllers/AdminController')
 const ContentController = require('../controllers/ContentController')
 const ForumController = require('../controllers/ForumController')
+const PaymentController = require('../controllers/PaymentController')
 const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
@@ -26,6 +27,11 @@ routes.delete('/user/:id', checkAuth, UserController.delete)
 routes.patch('/user/update/:id', checkAuth, UserController.update)
 routes.patch('/user/update/password/:id', checkAuth, UserController.updatePassword)
 routes.post('/user/pdf-download/:id', checkAuth, UserController.registerPdfDownload)
+
+// Pagamentos Asaas
+routes.post('/payments/webhook/asaas', PaymentController.asaasWebhook)
+routes.post('/payments/checkout', checkAuth, PaymentController.createCheckout)
+routes.get('/payments/premium-status', checkAuth, PaymentController.getPremiumStatus)
 
 //Marking Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)

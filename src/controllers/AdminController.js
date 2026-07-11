@@ -9,8 +9,7 @@ const ForumReportModel = require("../models/ForumReport");
 const mongoose = require("mongoose");
 const { slugify } = require("../helpers/slugify");
 
-const MONGO_LIMIT_MB = 512;
-const PIX_PRICE = 9.9;
+const { FREE_PDF_LIMIT, PREMIUM_PRICE } = require("../config/premium");
 
 class AdminController {
   dashboard = async (req, res) => {
@@ -38,7 +37,7 @@ class AdminController {
         PixPaymentModel.countDocuments(),
         AccessLogModel.countDocuments(),
         UserModel.countDocuments({ is_premium: true }),
-        PixPaymentModel.countDocuments({ status: "generated" }),
+        PixPaymentModel.countDocuments({ status: { $in: ["generated", "pending"] } }),
         PixPaymentModel.countDocuments({ status: "paid" }),
         UserModel.countDocuments({ "preferences.notificationsEnabled": true }),
         UserModel.aggregate([
@@ -79,7 +78,7 @@ class AdminController {
         Math.round((estimatedStorageMB / MONGO_LIMIT_MB) * 100)
       );
 
-      const revenue = pixPaid * PIX_PRICE;
+      const revenue = pixPaid * PREMIUM_PRICE;
 
       res.status(200).json({
         users: { total: totalUsers, newLast7Days: newUsers7d },
@@ -103,7 +102,7 @@ class AdminController {
           vercelAnalyticsUrl: process.env.VERCEL_ANALYTICS_URL || null,
         },
         financial: {
-          pixPrice: PIX_PRICE,
+          pixPrice: PREMIUM_PRICE,
           generated: pixGenerated,
           paid: pixPaid,
           revenue,
@@ -173,7 +172,7 @@ class AdminController {
         if (!hasPaid) {
           await PixPaymentModel.create({
             userId: id,
-            amount: PIX_PRICE,
+            amount: PREMIUM_PRICE,
             status: "paid",
             paidAt: new Date(),
           });

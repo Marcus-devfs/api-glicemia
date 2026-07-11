@@ -13,9 +13,12 @@ const pixPaymentSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ["generated", "paid"],
-    default: "generated",
+    enum: ["generated", "pending", "paid", "expired", "cancelled"],
+    default: "pending",
   },
+  asaasCheckoutId: { type: String, default: null },
+  asaasPaymentId: { type: String, default: null },
+  checkoutUrl: { type: String, default: null },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -27,6 +30,7 @@ const pixPaymentSchema = new Schema({
 });
 
 pixPaymentSchema.index({ userId: 1, status: 1 });
+pixPaymentSchema.index({ asaasCheckoutId: 1 });
 
 const PixPayment = mongoose.model("PixPayment", pixPaymentSchema);
 
