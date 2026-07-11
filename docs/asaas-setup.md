@@ -49,3 +49,7 @@ APP_URL=https://app.gestaglic.com.br
 ## Preço e limite
 
 `src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 6.95`
+
+## Taxas Asaas no admin
+
+Ao confirmar pagamento (webhook ou polling), a API grava `netAmount` e `feeAmount` a partir do `netValue` retornado pelo Asaas. O dashboard e a página Assinaturas exibem receita **bruta**, **taxas** e **líquida**. Pagamentos antigos são sincronizados automaticamente ao abrir o admin.

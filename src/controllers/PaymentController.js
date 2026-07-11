@@ -47,7 +47,10 @@ class PaymentController {
       if (paymentId) {
         const remote = await getPayment(paymentId);
         if (isPaymentPaid(remote.status)) {
-          await activatePremium(userId, { asaasPaymentId: paymentId });
+          await activatePremium(userId, {
+            asaasPaymentId: paymentId,
+            asaasPayment: remote,
+          });
           const updated = await UserModel.findById(userId);
           return res.status(200).json({
             alreadyPaid: true,
@@ -204,6 +207,7 @@ class PaymentController {
       await activatePremium(userId, {
         asaasPaymentId: payment?.id,
         asaasCheckoutId: checkout?.id,
+        asaasPayment: payment,
       });
 
       console.log("[asaas webhook] premium ativado", userId, event);
@@ -236,6 +240,7 @@ class PaymentController {
           if (isPaymentPaid(remote.status)) {
             await activatePremium(userId, {
               asaasPaymentId: pendingPix.asaasPaymentId,
+              asaasPayment: remote,
             });
             user = await UserModel.findById(userId).select(
               "is_premium pdf_downloads_count"

@@ -10,6 +10,84 @@ const mongoose = require("mongoose");
 const { slugify } = require("../helpers/slugify");
 
 const { FREE_PDF_LIMIT, PREMIUM_PRICE } = require("../config/premium");
+const { fetchPaymentFees } = require("../lib/asaas/paymentFees");
+
+const MONGO_LIMIT_MB = 512;
+
+async function syncMissingPaymentFees(limit = 20) {
+  const missing = await PixPaymentModel.find({
+    status: "paid",
+    netAmount: null,
+    asaasPaymentId: { $ne: null },
+  })
+    .sort({ paidAt: -1 })
+    .limit(limit);
+
+  for (const payment of missing) {
+    try {
+      const fees = await fetchPaymentFees(payment.asaasPaymentId);
+      if (fees.netAmount == null) continue;
+      payment.amount = fees.amount || payment.amount;
+      payment.netAmount = fees.netAmount;
+      payment.feeAmount = fees.feeAmount;
+      await payment.save();
+    } catch (err) {
+      console.log("syncMissingPaymentFees:", payment.asaasPaymentId, err.message);
+    }
+  }
+}
+
+async function getFinancialSummary() {
+  await syncMissingPaymentFees();
+
+  const [paidAgg, pendingAgg, premiumUsers] = await Promise.all([
+    PixPaymentModel.aggregate([
+      { $match: { status: "paid" } },
+      {
+        $group: {
+          _id: null,
+          gross: { $sum: { $ifNull: ["$amount", PREMIUM_PRICE] } },
+          net: { $sum: { $ifNull: ["$netAmount", 0] } },
+          fees: { $sum: { $ifNull: ["$feeAmount", 0] } },
+          paidWithFees: {
+            $sum: { $cond: [{ $ne: ["$netAmount", null] }, 1, 0] },
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    PixPaymentModel.aggregate([
+      { $match: { status: { $in: ["generated", "pending"] } } },
+      {
+        $group: {
+          _id: null,
+          gross: { $sum: { $ifNull: ["$amount", PREMIUM_PRICE] } },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    UserModel.countDocuments({ is_premium: true }),
+  ]);
+
+  const paid = paidAgg[0] || {};
+  const pending = pendingAgg[0] || {};
+
+  return {
+    pixPrice: PREMIUM_PRICE,
+    received: {
+      gross: paid.gross ?? 0,
+      net: paid.net ?? 0,
+      fees: paid.fees ?? 0,
+      count: paid.count ?? 0,
+      syncedCount: paid.paidWithFees ?? 0,
+    },
+    pending: {
+      gross: pending.gross ?? 0,
+      count: pending.count ?? 0,
+    },
+    premiumUsers,
+  };
+}
 
 class AdminController {
   dashboard = async (req, res) => {
@@ -80,6 +158,8 @@ class AdminController {
 
       const revenue = pixPaid * PREMIUM_PRICE;
 
+      const financial = await getFinancialSummary();
+
       res.status(200).json({
         users: { total: totalUsers, newLast7Days: newUsers7d },
         infra: {
@@ -102,11 +182,16 @@ class AdminController {
           vercelAnalyticsUrl: process.env.VERCEL_ANALYTICS_URL || null,
         },
         financial: {
-          pixPrice: PREMIUM_PRICE,
+          pixPrice: financial.pixPrice,
           generated: pixGenerated,
-          paid: pixPaid,
-          revenue,
-          premiumUsers,
+          paid: financial.received.count,
+          revenue: financial.received.gross,
+          revenueNet: financial.received.net,
+          asaasFees: financial.received.fees,
+          paidWithFeesSynced: financial.received.syncedCount,
+          pendingGross: financial.pending.gross,
+          pendingCount: financial.pending.count,
+          premiumUsers: financial.premiumUsers,
         },
         notifications: {
           enabled: notificationsEnabled,
@@ -116,6 +201,16 @@ class AdminController {
     } catch (error) {
       console.log("admin dashboard error:", error);
       res.status(500).json({ msg: "Erro ao carregar métricas" });
+    }
+  };
+
+  financialSummary = async (req, res) => {
+    try {
+      const summary = await getFinancialSummary();
+      res.status(200).json(summary);
+    } catch (error) {
+      console.log("admin financialSummary error:", error);
+      res.status(500).json({ msg: "Erro ao carregar financeiro" });
     }
   };
 
@@ -188,6 +283,8 @@ class AdminController {
 
   listPayments = async (req, res) => {
     try {
+      await syncMissingPaymentFees();
+
       const payments = await PixPaymentModel.find()
         .populate("userId", "name email")
         .sort({ createdAt: -1 })

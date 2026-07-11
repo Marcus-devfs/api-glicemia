@@ -59,6 +59,7 @@ routes.get('/admin/dashboard', checkAuth, checkAdmin, AdminController.dashboard)
 routes.get('/admin/users', checkAuth, checkAdmin, AdminController.listUsers)
 routes.get('/admin/users/:id', checkAuth, checkAdmin, AdminController.getUserDetail)
 routes.patch('/admin/users/:id/premium', checkAuth, checkAdmin, AdminController.setPremium)
+routes.get('/admin/financial/summary', checkAuth, checkAdmin, AdminController.financialSummary)
 routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayments)
 
 // Conteúdo público (blog/dicas)

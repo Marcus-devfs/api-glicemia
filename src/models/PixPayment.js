@@ -11,6 +11,14 @@ const pixPaymentSchema = new Schema({
     type: Number,
     default: 6.95,
   },
+  netAmount: {
+    type: Number,
+    default: null,
+  },
+  feeAmount: {
+    type: Number,
+    default: null,
+  },
   status: {
     type: String,
     enum: ["generated", "pending", "paid", "expired", "cancelled"],
