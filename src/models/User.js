@@ -80,6 +80,18 @@ const userSchema = new Schema({
       type: Boolean,
       default: false,
    },
+
+   passwordResetToken: {
+      type: String,
+      select: false,
+      default: null,
+   },
+
+   passwordResetExpires: {
+      type: Date,
+      select: false,
+      default: null,
+   },
 });
 
 const User = mongoose.model("User", userSchema);

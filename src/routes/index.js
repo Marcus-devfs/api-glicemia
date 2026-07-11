@@ -12,6 +12,8 @@ routes.get('/', async (req, res) => {
     return res.status(200).json({ msg: 'Public Route' })
 })
 routes.post('/user/login', UserController.login)
+routes.post('/user/forgot-password', UserController.forgotPassword)
+routes.post('/user/reset-password', UserController.resetPassword)
 routes.get('/user/list', checkAuth, UserController.list)
 routes.post('/user/create', UserController.add)
 routes.get('/user/:id', checkAuth, UserController.readById)

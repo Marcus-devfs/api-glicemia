@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 const UserModel = require('../models/User')
 const bcrypt = require('bcrypt')
-const { trusted } = require('mongoose')
-const sgMail = require('@sendgrid/mail')
+const { sendMail } = require('../lib/email/sendMail')
+const { passwordResetHtml } = require('../lib/email/templates/passwordReset')
 
 class UserController {
 
@@ -53,25 +54,22 @@ class UserController {
          <div style="background-color: #f1f1f1; padding: 30px; position: relative;">
             <div style="max-width: 400px; background-color: #fff; padding: 30px; border-radius: 12px; position: absolute; margin: auto; left: 0; right: 0; top: 0; bottom: 0;">
                <p style="font-size: 18px; text-align: center;">${newUser?.name},</p>
-               <p style="font-size: 18px; text-align: center;">Você já pode acessar o painel M&F Admin:</p>
-               <p style="font-size: 18px;">https://admin-mfplanejados.vercel.app</p>
-               <p style="font-size: 18px;">Usuário: ${email}</p>
+               <p style="font-size: 18px; text-align: center;">Bem-vinda ao GestaGlic!</p>
+               <p style="font-size: 18px;">https://app.gestaglic.com.br/login</p>
+               <p style="font-size: 18px;">Usuário: ${normalizedEmail}</p>
                <p style="font-size: 18px;">Senha: ${senha}</p>
             </div>
          </div>`
 
-         sgMail.setApiKey(process.env.NEXT_PUBLIC_SENDGRID_API_KEY);
-
-         const msg = {
-            to: email,
-            from: 'marcusvf.silva@outlook.com.br',
-            subject: 'Credenciais de Acesso',
-            html
-         };
-
-         sgMail.send(msg, () => console.log({
-            message: `Credentials sent to ${email}`,
-         }));
+         try {
+            await sendMail({
+               to: normalizedEmail,
+               subject: 'Bem-vinda ao GestaGlic — suas credenciais',
+               html,
+            })
+         } catch (emailErr) {
+            console.log('Erro ao enviar e-mail de cadastro:', emailErr.message)
+         }
 
          res.status(201).json(newUser)
 
@@ -230,6 +228,83 @@ class UserController {
       } catch (error) {
          console.log(error)
          return res.status(500).json({ msg: 'API error' })
+      }
+   }
+
+   forgotPassword = async (req, res) => {
+      try {
+         const { email } = req.body
+         const normalizedEmail = email?.trim().toLowerCase()
+
+         const genericResponse = {
+            msg: 'Se o e-mail existir, enviaremos um link de recuperação.',
+         }
+
+         if (!normalizedEmail) {
+            return res.status(200).json(genericResponse)
+         }
+
+         const user = await UserModel.findOne({ email: normalizedEmail })
+
+         if (!user) {
+            return res.status(200).json(genericResponse)
+         }
+
+         const resetToken = crypto.randomBytes(32).toString('hex')
+         const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex')
+
+         user.passwordResetToken = hashedToken
+         user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000)
+         await user.save()
+
+         const appUrl = process.env.APP_URL || 'https://app.gestaglic.com.br'
+         const resetUrl = `${appUrl}/redefinir-senha?token=${resetToken}`
+
+         await sendMail({
+            to: normalizedEmail,
+            subject: 'Redefinir senha — GestaGlic',
+            html: passwordResetHtml({ name: user.name, resetUrl }),
+         })
+
+         return res.status(200).json(genericResponse)
+      } catch (error) {
+         console.log('forgotPassword error:', error)
+         return res.status(500).json({ msg: 'Erro ao enviar e-mail. Tente novamente.' })
+      }
+   }
+
+   resetPassword = async (req, res) => {
+      try {
+         const { token, password } = req.body
+
+         if (!token || !password) {
+            return res.status(400).json({ msg: 'Token e senha são obrigatórios' })
+         }
+
+         if (password.length < 4) {
+            return res.status(400).json({ msg: 'Senha deve ter no mínimo 4 caracteres' })
+         }
+
+         const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+         const user = await UserModel.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: new Date() },
+         }).select('+passwordResetToken +passwordResetExpires')
+
+         if (!user) {
+            return res.status(400).json({ msg: 'Link inválido ou expirado. Solicite um novo.' })
+         }
+
+         user.password = await bcrypt.hash(password, 10)
+         user.passwordResetToken = null
+         user.passwordResetExpires = null
+         await user.save()
+
+         return res.status(200).json({ msg: 'Senha redefinida com sucesso!' })
+      } catch (error) {
+         console.log('resetPassword error:', error)
+         return res.status(500).json({ msg: 'Erro ao redefinir senha' })
       }
    }
 
