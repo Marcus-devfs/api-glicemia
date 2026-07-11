@@ -2,6 +2,7 @@ const UserModel = require("../models/User");
 const PixPaymentModel = require("../models/PixPayment");
 const { PREMIUM_PRICE } = require("../config/premium");
 const { getOrCreateCustomer } = require("../lib/asaas/customer");
+const { isValidCpf } = require("../lib/asaas/cpf");
 const {
   createCardCheckout,
   createPixPayment,
@@ -66,8 +67,16 @@ class PaymentController {
         }
       }
 
-      const customerId = await getOrCreateCustomer(user);
-      const payment = await createPixPayment(customerId, userId);
+      const customerId = await getOrCreateCustomer(user, req.body?.cpf);
+      const cpfCnpj = customerId.cpfCnpj;
+      if (!cpfCnpj || !isValidCpf(cpfCnpj)) {
+        return res.status(400).json({
+          msg: "Informe um CPF válido para gerar o Pix.",
+          code: "NEED_CPF",
+        });
+      }
+
+      const payment = await createPixPayment(customerId.customerId, userId);
       paymentId = payment.id;
 
       const qr = await getPixQrCode(paymentId);

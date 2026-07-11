@@ -8,8 +8,8 @@
 | **Cartão** | Checkout hospedado Asaas (redirect) |
 
 1. Usuária exporta até **5 PDFs gratuitos**
-2. Modal oferece **Pix** (fica no app) ou **Cartão** (abre Asaas)
-3. Pix: QR Code + polling a cada 4s + webhook
+2. Modal oferece **Pix** (checkout transparente no app) ou **Cartão** (abre Asaas)
+3. Pix: ao selecionar, abre checkout no app → informa **CPF só nessa hora** → QR Code + polling
 4. Cartão: redirect → callback `?premium=success`
 5. Premium liberado automaticamente
 
@@ -41,11 +41,11 @@ APP_URL=https://app.gestaglic.com.br
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/payments/pix` | Gera QR Pix transparente |
+| POST | `/payments/pix` | Checkout Pix (`body: { cpf }` — só no pagamento, não no cadastro) |
 | POST | `/payments/card-checkout` | Checkout só cartão |
 | GET | `/payments/premium-status` | Status + sync Asaas |
 | POST | `/payments/webhook/asaas` | Webhook |
 
 ## Preço e limite
 
-`src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 9.9`
+`src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 6.95`
