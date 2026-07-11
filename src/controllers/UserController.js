@@ -18,8 +18,14 @@ class UserController {
    add = async (req, res) => {
 
       try {
-         const { userData } = req.body
+         const userData = req.body.userData ?? req.body
          const { email, password = null } = userData
+
+         if (!email || !userData.name) {
+            return res.status(400).json({ msg: 'Missing required fields' })
+         }
+
+         const normalizedEmail = email.trim().toLowerCase()
 
          let senha = password
 
@@ -28,7 +34,7 @@ class UserController {
             senha = newPassword
          }
 
-         const userExists = await UserModel.findOne({ email })
+         const userExists = await UserModel.findOne({ email: normalizedEmail })
 
          if (userExists) {
             return res.status(500).json({ msg: 'User exists' })
@@ -39,6 +45,7 @@ class UserController {
 
          const newUser = await UserModel.create({
             ...userData,
+            email: normalizedEmail,
             password: passwordHash,
          })
 
@@ -78,8 +85,13 @@ class UserController {
 
       const { email, password } = req.body
       try {
-         const user = await UserModel.findOne({ email })
+         const normalizedEmail = email?.trim().toLowerCase()
+         const user = await UserModel.findOne({ email: normalizedEmail })
             .select('+password').populate('photoPerfil')
+
+         if (!user || !user.password) {
+            return res.status(401).json({ msg: 'Invalid Credentials' })
+         }
 
          const result = await bcrypt.compare(password, user.password)
 
