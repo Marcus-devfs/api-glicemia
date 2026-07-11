@@ -19,6 +19,7 @@ routes.post('/user/loginToken', checkAuth, UserController.loginByToken)
 routes.delete('/user/:id', checkAuth, UserController.delete)
 routes.patch('/user/update/:id', checkAuth, UserController.update)
 routes.patch('/user/update/password/:id', checkAuth, UserController.updatePassword)
+routes.post('/user/pdf-download/:id', checkAuth, UserController.registerPdfDownload)
 
 //Marking Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)

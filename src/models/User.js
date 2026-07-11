@@ -70,6 +70,16 @@ const userSchema = new Schema({
       date: String,
       sentSlots: [String],
    },
+
+   pdf_downloads_count: {
+      type: Number,
+      default: 0,
+   },
+
+   is_premium: {
+      type: Boolean,
+      default: false,
+   },
 });
 
 const User = mongoose.model("User", userSchema);

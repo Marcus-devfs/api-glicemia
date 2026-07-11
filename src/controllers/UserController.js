@@ -176,6 +176,51 @@ class UserController {
       }
    }
 
+   registerPdfDownload = async (req, res) => {
+      try {
+         const { id } = req.params
+
+         if (req.currentUser?.userId !== id) {
+            return res.status(403).json({ msg: 'Forbidden' })
+         }
+
+         const user = await UserModel.findById(id)
+
+         if (!user) {
+            return res.status(404).json({ msg: 'User not found' })
+         }
+
+         if (user.is_premium) {
+            return res.status(200).json({
+               allowed: true,
+               pdf_downloads_count: user.pdf_downloads_count,
+               is_premium: true,
+            })
+         }
+
+         if (user.pdf_downloads_count >= 2) {
+            return res.status(403).json({
+               allowed: false,
+               limit_reached: true,
+               pdf_downloads_count: user.pdf_downloads_count,
+               is_premium: false,
+            })
+         }
+
+         user.pdf_downloads_count += 1
+         await user.save()
+
+         return res.status(200).json({
+            allowed: true,
+            pdf_downloads_count: user.pdf_downloads_count,
+            is_premium: false,
+         })
+      } catch (error) {
+         console.log(error)
+         return res.status(500).json({ msg: 'API error' })
+      }
+   }
+
    generateRadomPassword(length) {
       var result = '';
       var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
