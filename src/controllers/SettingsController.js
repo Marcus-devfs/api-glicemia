@@ -2,6 +2,8 @@ const {
   getAppSettings,
   updateAppSettings,
 } = require("../lib/appSettings");
+const { getAsaasMinCharge } = require("../lib/asaas/limits");
+const { isSandbox } = require("../lib/asaas/client");
 
 class SettingsController {
   /** Público — app lê preço premium e limite de PDFs grátis */
@@ -22,7 +24,11 @@ class SettingsController {
   getPremiumSettingsAdmin = async (_req, res) => {
     try {
       const settings = await getAppSettings();
-      res.status(200).json(settings);
+      res.status(200).json({
+        ...settings,
+        asaasMinCharge: getAsaasMinCharge(),
+        asaasSandbox: isSandbox(),
+      });
     } catch (error) {
       res.status(500).json({ msg: "Erro ao carregar configurações" });
     }
@@ -34,9 +40,10 @@ class SettingsController {
 
       if (premiumPrice != null) {
         const price = Number(premiumPrice);
-        if (!Number.isFinite(price) || price < 0.5 || price > 999.99) {
+        const minCharge = getAsaasMinCharge();
+        if (!Number.isFinite(price) || price < minCharge || price > 999.99) {
           return res.status(400).json({
-            msg: "Informe um preço entre R$ 0,50 e R$ 999,99",
+            msg: `Informe um preço entre R$ ${minCharge.toFixed(2).replace(".", ",")} e R$ 999,99 (mínimo do Asaas${isSandbox() ? " sandbox" : " em produção"})`,
           });
         }
       }
@@ -55,7 +62,11 @@ class SettingsController {
       }
 
       const settings = await updateAppSettings({ premiumPrice, freePdfLimit });
-      res.status(200).json(settings);
+      res.status(200).json({
+        ...settings,
+        asaasMinCharge: getAsaasMinCharge(),
+        asaasSandbox: isSandbox(),
+      });
     } catch (error) {
       console.log("updatePremiumSettings error:", error);
       res.status(500).json({ msg: "Erro ao salvar configurações" });

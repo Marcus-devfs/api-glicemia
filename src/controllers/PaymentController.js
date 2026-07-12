@@ -15,6 +15,7 @@ const {
   getAsaasConfigDebug,
 } = require("../lib/asaas/client");
 const { activatePremium } = require("../lib/asaas/activatePremium");
+const { validateAsaasChargeAmount, getAsaasMinCharge } = require("../lib/asaas/limits");
 const { sendPaymentPendingPush, processPaymentReminders } = require("../lib/push/processPaymentReminders");
 const { isPushConfigured } = require("../lib/push/webPush");
 
@@ -39,6 +40,15 @@ class PaymentController {
       }
 
       const premiumPrice = await getPremiumPrice();
+
+      const chargeCheck = validateAsaasChargeAmount(premiumPrice);
+      if (!chargeCheck.ok) {
+        return res.status(400).json({
+          msg: chargeCheck.msg,
+          code: "ASAAS_MIN_CHARGE",
+          minCharge: chargeCheck.min,
+        });
+      }
 
       let record = await PixPaymentModel.findOne({
         userId,
@@ -143,6 +153,15 @@ class PaymentController {
       }
 
       const premiumPrice = await getPremiumPrice();
+
+      const chargeCheck = validateAsaasChargeAmount(premiumPrice);
+      if (!chargeCheck.ok) {
+        return res.status(400).json({
+          msg: chargeCheck.msg,
+          code: "ASAAS_MIN_CHARGE",
+          minCharge: chargeCheck.min,
+        });
+      }
 
       const recentPending = await PixPaymentModel.findOne({
         userId,

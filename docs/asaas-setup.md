@@ -62,6 +62,8 @@ APP_URL=https://app.gestaglic.com.br
 | `ASAAS_WEBHOOK_TOKEN` | qualquer string | **mesmo token do webhook no painel** |
 | `APP_URL` | localhost ou app prod | **`https://app.gestaglic.com.br`** |
 
+**Valor mínimo em produção:** o Asaas exige **R$ 5,00** por cobrança (Pix e cartão). No sandbox dá para testar com valores menores. O admin bloqueia preços abaixo do mínimo do ambiente atual.
+
 **Importante:** não misture chave de produção com `ASAAS_SANDBOX=true`.
 
 ### Vercel: o `$` some da chave
