@@ -11,6 +11,8 @@ const {
   buildCheckoutUrl,
   isPaymentPaid,
   isSandbox,
+  testAsaasConnection,
+  getAsaasConfigDebug,
 } = require("../lib/asaas/client");
 const { activatePremium } = require("../lib/asaas/activatePremium");
 const { sendPaymentPendingPush, processPaymentReminders } = require("../lib/push/processPaymentReminders");
@@ -122,7 +124,7 @@ class PaymentController {
         sandbox: isSandbox(),
       });
     } catch (error) {
-      console.log("createPix error:", error.message, error.asaas);
+      console.log("createPix error:", error.message, error.asaas, error.asaasDebug);
       res.status(500).json({
         msg: error.message || "Erro ao gerar Pix",
       });
@@ -198,7 +200,7 @@ class PaymentController {
 
       res.status(200).json({ checkoutUrl });
     } catch (error) {
-      console.log("createCardCheckout error:", error.message, error.asaas);
+      console.log("createCardCheckout error:", error.message, error.asaas, error.asaasDebug);
       res.status(500).json({
         msg: error.message || "Erro ao criar checkout",
       });
@@ -294,6 +296,15 @@ class PaymentController {
       });
     } catch (error) {
       res.status(500).json({ msg: "Erro" });
+    }
+  };
+
+  asaasDiagnostic = async (req, res) => {
+    try {
+      const result = await testAsaasConnection();
+      res.status(result.ok ? 200 : 503).json(result);
+    } catch (error) {
+      res.status(500).json({ ok: false, debug: getAsaasConfigDebug(), error: error.message });
     }
   };
 

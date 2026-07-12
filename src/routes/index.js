@@ -37,6 +37,7 @@ routes.post('/payments/pix', checkAuth, PaymentController.createPix)
 routes.post('/payments/card-checkout', checkAuth, PaymentController.createCardCheckout)
 routes.post('/payments/checkout', checkAuth, PaymentController.createCardCheckout)
 routes.get('/payments/premium-status', checkAuth, PaymentController.getPremiumStatus)
+routes.get('/payments/asaas-diagnostic', checkCron, PaymentController.asaasDiagnostic)
 routes.post('/payments/remind-pending', checkCron, PaymentController.remindPending)
 
 // Configurações públicas (preço premium)

@@ -62,9 +62,28 @@ APP_URL=https://app.gestaglic.com.br
 | `ASAAS_WEBHOOK_TOKEN` | qualquer string | **mesmo token do webhook no painel** |
 | `APP_URL` | localhost ou app prod | **`https://app.gestaglic.com.br`** |
 
-**Importante:** não misture chave de produção com `ASAAS_SANDBOX=true` — a API pode apontar para o ambiente errado.
+**Importante:** não misture chave de produção com `ASAAS_SANDBOX=true`.
 
-Depois de salvar → **Redeploy** do serviço no Railway.
+### Vercel: o `$` some da chave
+
+Se `ASAAS_API_KEY` aparecer como `aact_prod_...` (sem `$`), use **`ASAAS_API_KEY_B64`**:
+
+```bash
+echo -n '$aact_prod_SUA_CHAVE_COMPLETA' | base64
+```
+
+Cole o resultado no Vercel como `ASAAS_API_KEY_B64` (Production). Redeploy.
+
+### Diagnosticar conexão Asaas
+
+```bash
+curl -H "Authorization: Bearer SEU_CRON_SECRET" \
+  https://SUA-API.vercel.app/payments/asaas-diagnostic
+```
+
+Esperado: `"ok": true`, `"keyPrefix": "$aact_prod_"`.
+
+Depois de salvar → **Redeploy** do serviço.
 
 ### 3. Webhook de **produção** (obrigatório)
 
