@@ -9,6 +9,8 @@ const ContentController = require('../controllers/ContentController')
 const ForumController = require('../controllers/ForumController')
 const PaymentController = require('../controllers/PaymentController')
 const SettingsController = require('../controllers/SettingsController')
+const FeedbackController = require('../controllers/FeedbackController')
+const LpAnalyticsController = require('../controllers/LpAnalyticsController')
 const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
@@ -39,6 +41,12 @@ routes.get('/payments/premium-status', checkAuth, PaymentController.getPremiumSt
 // Configurações públicas (preço premium)
 routes.get('/settings/premium', SettingsController.getPremiumSettings)
 
+// Analytics LP (público)
+routes.post('/track/lp', LpAnalyticsController.track)
+
+// Feedback (usuária logada)
+routes.post('/feedback', checkAuth, FeedbackController.create)
+
 //Marking Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)
 routes.get('/marking/list/media/:userId', checkAuth, MedicaoController.listMedia)
@@ -67,6 +75,9 @@ routes.get('/admin/financial/summary', checkAuth, checkAdmin, AdminController.fi
 routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayments)
 routes.get('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.getPremiumSettingsAdmin)
 routes.patch('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.updatePremiumSettings)
+routes.get('/admin/feedback', checkAuth, checkAdmin, FeedbackController.listAdmin)
+routes.patch('/admin/feedback/:id', checkAuth, checkAdmin, FeedbackController.updateStatus)
+routes.get('/admin/lp/metrics', checkAuth, checkAdmin, LpAnalyticsController.metrics)
 
 // Conteúdo público (blog/dicas)
 routes.get('/articles', ContentController.listArticles)
