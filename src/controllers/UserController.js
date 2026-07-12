@@ -159,9 +159,43 @@ class UserController {
    update = async (req, res) => {
       try {
          const { id } = req.params
-         const { userData } = req.body
 
-         const response = await UserModel.findByIdAndUpdate(id, userData, { new: true, runValidators: true }).exec()
+         if (req.currentUser?.userId !== id) {
+            return res.status(403).json({ msg: 'Forbidden' })
+         }
+
+         const user = await UserModel.findById(id)
+         if (!user) return res.status(404).json({ msg: 'User not found' })
+
+         const body = req.body.userData ?? req.body
+         const update = {}
+
+         if (body.name != null) update.name = String(body.name).trim()
+
+         if (body.pregnancy != null) {
+            update.pregnancy = {
+               dueDate: body.pregnancy.dueDate ? new Date(body.pregnancy.dueDate) : null,
+               fetusCount: Math.min(4, Math.max(1, Number(body.pregnancy.fetusCount) || 1)),
+            }
+         }
+
+         if (body.glucoseTargets != null && user.is_premium) {
+            const t = body.glucoseTargets
+            update.glucoseTargets = {
+               jejum: Math.min(120, Math.max(60, Number(t.jejum) || user.glucoseTargets?.jejum || 95)),
+               pos1h: Math.min(250, Math.max(100, Number(t.pos1h) || user.glucoseTargets?.pos1h || 179)),
+               pos2h: Math.min(220, Math.max(100, Number(t.pos2h) || user.glucoseTargets?.pos2h || 152)),
+            }
+         }
+
+         if (body.preferences?.weeklySummaryEmail != null && user.is_premium) {
+            update['preferences.weeklySummaryEmail'] = Boolean(body.preferences.weeklySummaryEmail)
+         }
+
+         const response = await UserModel.findByIdAndUpdate(id, update, {
+            new: true,
+            runValidators: true,
+         }).exec()
 
          res.status(200).json(response)
       } catch (error) {

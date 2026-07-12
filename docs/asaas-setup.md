@@ -199,6 +199,7 @@ Requer push ativo no app (Perfil → lembretes) e `VAPID_*` configurados.
 |---------|------|
 | Pagamento confirmado (Pix/cartão) | "Premium ativado! PDFs ilimitados liberados" → `/relatorio` |
 | Pagamento confirmado (Pix/cartão) | E-mail "Pagamento confirmado — GestaGlic Premium ativado!" |
+| Resumo semanal (opt-in) | E-mail domingo com médias dos últimos 7 dias |
 | Pix gerado (nova cobrança) | "Complete o pagamento de R$ X" → `/relatorio` |
 | Checkout abandonado | 1 lembrete: cartão após **45 min**, Pix após **2 h** |
 
@@ -212,6 +213,17 @@ Authorization: Bearer <CRON_SECRET>
 ```
 
 Sugestão: **a cada 30 min** ou **1 h**.
+
+### Resumo semanal por e-mail (Premium)
+
+Usuárias premium podem ativar em **Perfil → Resumo semanal por e-mail**.
+
+```
+POST https://<sua-api>/reports/weekly-summary-email
+Authorization: Bearer <CRON_SECRET>
+```
+
+Sugestão: **domingo às 8h** (America/Sao_Paulo). Envia no máximo 1 e-mail por semana por usuária.
 
 ### Forçar lembrete (teste manual)
 

@@ -58,12 +58,29 @@ const userSchema = new Schema({
    preferences: {
       notificationsEnabled: { type: Boolean, default: false },
       timezone: { type: String, default: "America/Sao_Paulo" },
+      weeklySummaryEmail: { type: Boolean, default: false },
       reminders: [{
          id: String,
          period: String,
          time: String,
          label: String,
       }],
+   },
+
+   pregnancy: {
+      dueDate: { type: Date, default: null },
+      fetusCount: { type: Number, default: 1, min: 1, max: 4 },
+   },
+
+   glucoseTargets: {
+      jejum: { type: Number, default: 95, min: 60, max: 120 },
+      pos1h: { type: Number, default: 179, min: 100, max: 250 },
+      pos2h: { type: Number, default: 152, min: 100, max: 220 },
+   },
+
+   lastWeeklySummaryEmailAt: {
+      type: Date,
+      default: null,
    },
 
    notificationState: {
