@@ -40,6 +40,10 @@ const pixPaymentSchema = new Schema({
     type: Date,
     default: null,
   },
+  checkoutReminderSentAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 pixPaymentSchema.index({ userId: 1, status: 1 });

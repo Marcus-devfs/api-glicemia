@@ -5,6 +5,7 @@ const {
   extractFeesFromAsaasPayment,
   fetchPaymentFees,
 } = require("../asaas/paymentFees");
+const { sendPremiumActivatedPush } = require("../push/processPaymentReminders");
 
 async function resolveFeeData({ asaasPaymentId, asaasPayment } = {}) {
   if (asaasPayment?.value != null) {
@@ -26,6 +27,11 @@ async function activatePremium(
   { asaasPaymentId, asaasCheckoutId, asaasPayment } = {}
 ) {
   if (!userId) return null;
+
+  const existing = await UserModel.findById(userId);
+  if (!existing) return null;
+
+  const wasAlreadyPremium = existing.is_premium;
 
   const feeData = await resolveFeeData({ asaasPaymentId, asaasPayment });
 
@@ -65,6 +71,12 @@ async function activatePremium(
       asaasPaymentId: asaasPaymentId || null,
       asaasCheckoutId: asaasCheckoutId || null,
     });
+  }
+
+  if (!wasAlreadyPremium) {
+    sendPremiumActivatedPush(userId).catch((err) =>
+      console.log("premium push error:", err.message)
+    );
   }
 
   return user;

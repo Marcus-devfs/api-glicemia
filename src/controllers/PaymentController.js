@@ -13,6 +13,8 @@ const {
   isSandbox,
 } = require("../lib/asaas/client");
 const { activatePremium } = require("../lib/asaas/activatePremium");
+const { sendPaymentPendingPush, processPaymentReminders } = require("../lib/push/processPaymentReminders");
+const { isPushConfigured } = require("../lib/push/webPush");
 
 const PAID_EVENTS = new Set([
   "PAYMENT_RECEIVED",
@@ -106,6 +108,9 @@ class PaymentController {
           paymentMethod: "pix",
           asaasPaymentId: paymentId,
         });
+        sendPaymentPendingPush(userId, { amount: premiumPrice, method: "pix" }).catch((err) =>
+          console.log("pix pending push error:", err.message)
+        );
       }
 
       res.status(200).json({
@@ -178,6 +183,7 @@ class PaymentController {
         payment.asaasCheckoutId = checkout.id;
         payment.checkoutUrl = checkoutUrl;
         payment.amount = premiumPrice;
+        payment.checkoutReminderSentAt = null;
         await payment.save();
       } else {
         await PixPaymentModel.create({
@@ -288,6 +294,21 @@ class PaymentController {
       });
     } catch (error) {
       res.status(500).json({ msg: "Erro" });
+    }
+  };
+
+  remindPending = async (req, res) => {
+    try {
+      if (!isPushConfigured()) {
+        return res.status(503).json({ msg: "Push not configured" });
+      }
+
+      const force = req.query.force === "1" && process.env.NODE_ENV !== "production";
+      const result = await processPaymentReminders(force);
+      res.status(200).json(result);
+    } catch (error) {
+      console.log("remindPending error:", error);
+      res.status(500).json({ msg: "Erro ao processar lembretes de pagamento" });
     }
   };
 }

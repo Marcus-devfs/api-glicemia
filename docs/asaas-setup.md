@@ -148,3 +148,27 @@ Valores padrão na 1ª execução: `src/config/premium.js` → `FREE_PDF_LIMIT =
 ## Taxas Asaas no admin
 
 Ao confirmar pagamento (webhook ou polling), a API grava `netAmount` e `feeAmount` a partir do `netValue` retornado pelo Asaas. O dashboard e a página Assinaturas exibem receita **bruta**, **taxas** e **líquida**. Pagamentos antigos são sincronizados automaticamente ao abrir o admin.
+
+## Push notifications (premium)
+
+Requer push ativo no app (Perfil → lembretes) e `VAPID_*` configurados.
+
+| Momento | Push |
+|---------|------|
+| Pagamento confirmado (Pix/cartão) | "Premium ativado! PDFs ilimitados liberados" → `/relatorio` |
+| Pix gerado (nova cobrança) | "Complete o pagamento de R$ X" → `/relatorio` |
+| Checkout abandonado | 1 lembrete: cartão após **45 min**, Pix após **2 h** |
+
+### Cron no Railway
+
+Além do cron de lembretes de glicemia (`POST /push/reminders` a cada 15 min), configure:
+
+```
+POST https://<sua-api>/payments/remind-pending
+Authorization: Bearer <CRON_SECRET>
+```
+
+Sugestão: **a cada 30 min** ou **1 h**.
+
+Teste local (dev): `POST /payments/remind-pending?force=1` com header Bearer `CRON_SECRET`.
+
