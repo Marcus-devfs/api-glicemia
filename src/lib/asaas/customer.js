@@ -7,6 +7,17 @@ function formatPhone(phone) {
   return digits.length >= 10 ? digits : undefined;
 }
 
+async function disableCustomerNotifications(customerId) {
+  if (!customerId) return;
+  try {
+    await asaasRequest("PUT", `/customers/${customerId}`, {
+      notificationDisabled: true,
+    });
+  } catch (err) {
+    console.log("asaas disable notifications:", customerId, err.message);
+  }
+}
+
 async function syncCustomerCpf(customerId, cpfCnpj) {
   if (!cpfCnpj) return;
   await asaasRequest("PUT", `/customers/${customerId}`, { cpfCnpj });
@@ -37,6 +48,7 @@ async function getOrCreateCustomer(user, cpfInput) {
         name: user.name,
         email: user.email,
         externalReference: user._id.toString(),
+        notificationDisabled: true,
         ...(phone && { mobilePhone: phone }),
         ...(cpfFromRequest && { cpfCnpj: cpfFromRequest }),
       });
@@ -51,9 +63,55 @@ async function getOrCreateCustomer(user, cpfInput) {
     await syncCustomerCpf(customerId, cpfFromRequest);
   }
 
+  await disableCustomerNotifications(customerId);
+
   const cpfCnpj = cpfFromRequest || (await getCustomerCpf(customerId));
 
   return { customerId, cpfCnpj };
 }
 
-module.exports = { getOrCreateCustomer, syncCustomerCpf };
+async function disableNotificationsForAllCustomers() {
+  const limit = 100;
+  let offset = 0;
+  let updated = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  while (true) {
+    const list = await asaasRequest(
+      "GET",
+      `/customers?offset=${offset}&limit=${limit}`
+    );
+    const data = list.data || [];
+    if (!data.length) break;
+
+    for (const customer of data) {
+      if (customer.notificationDisabled) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await asaasRequest("PUT", `/customers/${customer.id}`, {
+          notificationDisabled: true,
+        });
+        updated++;
+      } catch (err) {
+        errors++;
+        console.log("asaas bulk disable:", customer.id, err.message);
+      }
+    }
+
+    if (data.length < limit) break;
+    offset += limit;
+  }
+
+  return { updated, skipped, errors };
+}
+
+module.exports = {
+  getOrCreateCustomer,
+  syncCustomerCpf,
+  disableCustomerNotifications,
+  disableNotificationsForAllCustomers,
+};

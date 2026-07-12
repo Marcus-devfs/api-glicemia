@@ -162,7 +162,12 @@ function buildCheckoutUrl(checkout) {
 }
 
 /** Checkout hospedado — somente cartão de crédito */
-async function createCardCheckout(userId, appUrl, premiumPrice = DEFAULT_PREMIUM_PRICE) {
+async function createCardCheckout(
+  userId,
+  appUrl,
+  premiumPrice = DEFAULT_PREMIUM_PRICE,
+  customerData = null
+) {
   const payload = {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["DETACHED"],
@@ -182,6 +187,7 @@ async function createCardCheckout(userId, appUrl, premiumPrice = DEFAULT_PREMIUM
         imageBase64: PLACEHOLDER_IMAGE_BASE64,
       },
     ],
+    ...(customerData && { customerData }),
   };
 
   return asaasRequest("POST", "/checkouts", payload);

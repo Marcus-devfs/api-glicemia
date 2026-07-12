@@ -1,7 +1,7 @@
 const UserModel = require("../models/User");
 const PixPaymentModel = require("../models/PixPayment");
 const { getPremiumPrice, pricesMatch } = require("../lib/appSettings");
-const { getOrCreateCustomer } = require("../lib/asaas/customer");
+const { getOrCreateCustomer, disableCustomerNotifications, disableNotificationsForAllCustomers } = require("../lib/asaas/customer");
 const { isValidCpf } = require("../lib/asaas/cpf");
 const {
   createCardCheckout,
@@ -188,7 +188,13 @@ class PaymentController {
       );
 
       const appUrl = process.env.APP_URL || "https://app.gestaglic.com.br";
-      const checkout = await createCardCheckout(userId, appUrl, premiumPrice);
+
+      await getOrCreateCustomer(user);
+
+      const checkout = await createCardCheckout(userId, appUrl, premiumPrice, {
+        name: user.name,
+        email: user.email,
+      });
       const checkoutUrl = buildCheckoutUrl(checkout);
 
       let payment = await PixPaymentModel.findOne({
@@ -259,6 +265,12 @@ class PaymentController {
         asaasCheckoutId: checkout?.id,
         asaasPayment: payment,
       });
+
+      if (payment?.customer) {
+        disableCustomerNotifications(payment.customer).catch((err) =>
+          console.log("webhook disable notifications:", err.message)
+        );
+      }
 
       console.log("[asaas webhook] premium ativado", userId, event);
       res.status(200).json({ received: true });
@@ -339,6 +351,16 @@ class PaymentController {
     } catch (error) {
       console.log("remindPending error:", error);
       res.status(500).json({ msg: "Erro ao processar lembretes de pagamento" });
+    }
+  };
+
+  disableAsaasNotifications = async (req, res) => {
+    try {
+      const result = await disableNotificationsForAllCustomers();
+      res.status(200).json(result);
+    } catch (error) {
+      console.log("disableAsaasNotifications error:", error.message);
+      res.status(500).json({ msg: error.message || "Erro ao desativar notificações Asaas" });
     }
   };
 }

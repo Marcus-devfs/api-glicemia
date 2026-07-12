@@ -170,6 +170,27 @@ Valores padrão na 1ª execução: `src/config/premium.js` → `FREE_PDF_LIMIT =
 
 Ao confirmar pagamento (webhook ou polling), a API grava `netAmount` e `feeAmount` a partir do `netValue` retornado pelo Asaas. O dashboard e a página Assinaturas exibem receita **bruta**, **taxas** e **líquida**. Pagamentos antigos são sincronizados automaticamente ao abrir o admin.
 
+## Notificações Asaas (economia de taxa de mensageria)
+
+Por padrão, o Asaas envia e-mail/SMS/WhatsApp sobre cobranças e cobra **taxa de mensageria** (ex.: R$ 0,99 por cobrança). O GestaGlic desativa isso na API:
+
+- Todo cliente criado via `getOrCreateCustomer` recebe `notificationDisabled: true`
+- Clientes já existentes são atualizados na próxima interação (Pix ou checkout cartão)
+- Confirmação de pagamento é enviada **por nós**: e-mail (Resend) + push no app
+
+### Painel Asaas (recomendado)
+
+No painel **Integrações → Notificações**, desative os canais padrão da conta (e-mail, SMS, WhatsApp) para novos clientes não herdarem envios automáticos.
+
+### Corrigir clientes já cadastrados (uma vez)
+
+```bash
+curl -X POST "https://SUA-API.vercel.app/payments/disable-asaas-notifications" \
+  -H "Authorization: Bearer SEU_CRON_SECRET"
+```
+
+Resposta: `{ "updated": N, "skipped": N, "errors": N }`.
+
 ## Push notifications (premium)
 
 Requer push ativo no app (Perfil → lembretes) e `VAPID_*` configurados.
@@ -177,6 +198,7 @@ Requer push ativo no app (Perfil → lembretes) e `VAPID_*` configurados.
 | Momento | Push |
 |---------|------|
 | Pagamento confirmado (Pix/cartão) | "Premium ativado! PDFs ilimitados liberados" → `/relatorio` |
+| Pagamento confirmado (Pix/cartão) | E-mail "Pagamento confirmado — GestaGlic Premium ativado!" |
 | Pix gerado (nova cobrança) | "Complete o pagamento de R$ X" → `/relatorio` |
 | Checkout abandonado | 1 lembrete: cartão após **45 min**, Pix após **2 h** |
 
@@ -191,5 +213,24 @@ Authorization: Bearer <CRON_SECRET>
 
 Sugestão: **a cada 30 min** ou **1 h**.
 
-Teste local (dev): `POST /payments/remind-pending?force=1` com header Bearer `CRON_SECRET`.
+### Forçar lembrete (teste manual)
+
+O endpoint já exige `Authorization: Bearer CRON_SECRET` — `force=1` funciona em produção para testes:
+
+```bash
+curl -X POST "https://SUA-API.vercel.app/payments/remind-pending?force=1" \
+  -H "Authorization: Bearer SEU_CRON_SECRET"
+```
+
+No **cron-job.org**: mesma URL com `?force=1` no job de teste (não deixe `force=1` no cron agendado de produção).
+
+Com `force=1`:
+- Ignora espera de 45 min (cartão) / 2 h (Pix)
+- Pode reenviar mesmo se já mandou lembrete antes
+
+Ainda precisa existir no MongoDB um `PixPayment` **pending** com Pix (`asaasPaymentId`) ou cartão (`checkoutUrl`), usuária **não premium**, com **push ativo** no app, e checkout **não expirado**.
+
+Resposta `"candidates": 0` = nenhum checkout pendente elegível no momento.
+
+Teste local: `POST /payments/remind-pending?force=1` com header Bearer `CRON_SECRET`.
 

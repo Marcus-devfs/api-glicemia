@@ -6,6 +6,7 @@ const {
   fetchPaymentFees,
 } = require("../asaas/paymentFees");
 const { sendPremiumActivatedPush } = require("../push/processPaymentReminders");
+const { sendPremiumPaymentConfirmedEmail } = require("../email/sendPremiumPaymentEmail");
 
 async function resolveFeeData({ asaasPaymentId, asaasPayment } = {}) {
   if (asaasPayment?.value != null) {
@@ -76,6 +77,9 @@ async function activatePremium(
   if (!wasAlreadyPremium) {
     sendPremiumActivatedPush(userId).catch((err) =>
       console.log("premium push error:", err.message)
+    );
+    sendPremiumPaymentConfirmedEmail(user).catch((err) =>
+      console.log("premium email error:", err.message)
     );
   }
 
