@@ -48,7 +48,9 @@ APP_URL=https://app.gestaglic.com.br
 
 ## Preço e limite
 
-`src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 6.95`
+`src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 14.9`
+
+**Importante:** ao mudar o preço, checkouts/cobranças pendentes no Asaas mantêm o valor antigo. A API só reutiliza sessões com o preço atual; senão gera nova cobrança.
 
 ## Taxas Asaas no admin
 

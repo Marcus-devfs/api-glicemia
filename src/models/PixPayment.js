@@ -9,7 +9,7 @@ const pixPaymentSchema = new Schema({
   },
   amount: {
     type: Number,
-    default: 6.95,
+    default: 14.9,
   },
   netAmount: {
     type: Number,

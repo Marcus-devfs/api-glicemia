@@ -39,6 +39,7 @@ class PaymentController {
         paymentMethod: "pix",
         status: "pending",
         asaasPaymentId: { $ne: null },
+        amount: PREMIUM_PRICE,
         createdAt: { $gte: new Date(Date.now() - PIX_REUSE_MS) },
       }).sort({ createdAt: -1 });
 
@@ -46,7 +47,9 @@ class PaymentController {
 
       if (paymentId) {
         const remote = await getPayment(paymentId);
-        if (isPaymentPaid(remote.status)) {
+        const priceOk = Number(remote.value) === PREMIUM_PRICE;
+
+        if (priceOk && isPaymentPaid(remote.status)) {
           await activatePremium(userId, {
             asaasPaymentId: paymentId,
             asaasPayment: remote,
@@ -57,7 +60,8 @@ class PaymentController {
             is_premium: updated?.is_premium ?? true,
           });
         }
-        if (remote.status === "PENDING") {
+
+        if (priceOk && remote.status === "PENDING") {
           const qr = await getPixQrCode(paymentId);
           return res.status(200).json({
             paymentId,
@@ -68,6 +72,9 @@ class PaymentController {
             sandbox: isSandbox(),
           });
         }
+
+        record = null;
+        paymentId = null;
       }
 
       const customerId = await getOrCreateCustomer(user, req.body?.cpf);
@@ -131,12 +138,24 @@ class PaymentController {
         paymentMethod: "card",
         status: "pending",
         checkoutUrl: { $ne: null },
+        amount: PREMIUM_PRICE,
         createdAt: { $gte: new Date(Date.now() - 55 * 60 * 1000) },
       }).sort({ createdAt: -1 });
 
       if (recentPending?.checkoutUrl) {
         return res.status(200).json({ checkoutUrl: recentPending.checkoutUrl });
       }
+
+      // Invalida checkouts pendentes com preço antigo (ex.: R$ 9,90)
+      await PixPaymentModel.updateMany(
+        {
+          userId,
+          paymentMethod: "card",
+          status: "pending",
+          amount: { $ne: PREMIUM_PRICE },
+        },
+        { $set: { status: "generated", checkoutUrl: null, asaasCheckoutId: null } }
+      );
 
       const appUrl = process.env.APP_URL || "https://app.gestaglic.com.br";
       const checkout = await createCardCheckout(userId, appUrl);
