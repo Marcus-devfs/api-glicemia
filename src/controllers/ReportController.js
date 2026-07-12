@@ -1,14 +1,14 @@
 const crypto = require("crypto");
-const UserModel = require("../../models/User");
-const MedicaoModel = require("../../models/Medicao");
-const ShareReportModel = require("../../models/ShareReport");
+const UserModel = require("../models/User");
+const MedicaoModel = require("../models/Medicao");
+const ShareReportModel = require("../models/ShareReport");
 const {
   computeReportStats,
   getGestationalWeek,
   sanitizePatientName,
   getTargets,
-} = require("../reports/stats");
-const { sendWeeklySummaryEmail } = require("../email/sendWeeklySummaryEmail");
+} = require("../lib/reports/stats");
+const { sendWeeklySummaryEmail } = require("../lib/email/sendWeeklySummaryEmail");
 
 const SHARE_DAYS = 14;
 const SHARE_TTL_DAYS = 7;
