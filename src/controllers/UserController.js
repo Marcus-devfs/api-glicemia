@@ -6,7 +6,7 @@ const { sendMail } = require('../lib/email/sendMail')
 const { passwordResetHtml } = require('../lib/email/templates/passwordReset')
 const PixPaymentModel = require('../models/PixPayment')
 const { logAccess } = require('../lib/accessLog')
-const { FREE_PDF_LIMIT, PREMIUM_PRICE } = require('../config/premium')
+const { getAppSettings } = require('../lib/appSettings')
 
 class UserController {
 
@@ -208,18 +208,20 @@ class UserController {
             return res.status(404).json({ msg: 'User not found' })
          }
 
+         const { premiumPrice, freePdfLimit } = await getAppSettings()
+
          if (user.is_premium) {
             logAccess(req, user._id, 'pdf_download', { premium: true })
             return res.status(200).json({
                allowed: true,
                pdf_downloads_count: user.pdf_downloads_count,
                is_premium: true,
-               free_pdf_limit: FREE_PDF_LIMIT,
+               free_pdf_limit: freePdfLimit,
                remaining_free: null,
             })
          }
 
-         if (user.pdf_downloads_count >= FREE_PDF_LIMIT) {
+         if (user.pdf_downloads_count >= freePdfLimit) {
             const existing = await PixPaymentModel.findOne({
                userId: id,
                status: { $in: ['generated', 'pending'] },
@@ -227,7 +229,7 @@ class UserController {
             if (!existing) {
                await PixPaymentModel.create({
                   userId: id,
-                  amount: PREMIUM_PRICE,
+                  amount: premiumPrice,
                   status: 'pending',
                })
             }
@@ -237,7 +239,7 @@ class UserController {
                limit_reached: true,
                pdf_downloads_count: user.pdf_downloads_count,
                is_premium: false,
-               free_pdf_limit: FREE_PDF_LIMIT,
+               free_pdf_limit: freePdfLimit,
                remaining_free: 0,
             })
          }
@@ -253,8 +255,8 @@ class UserController {
             allowed: true,
             pdf_downloads_count: user.pdf_downloads_count,
             is_premium: false,
-            free_pdf_limit: FREE_PDF_LIMIT,
-            remaining_free: Math.max(0, FREE_PDF_LIMIT - user.pdf_downloads_count),
+            free_pdf_limit: freePdfLimit,
+            remaining_free: Math.max(0, freePdfLimit - user.pdf_downloads_count),
          })
       } catch (error) {
          console.log(error)

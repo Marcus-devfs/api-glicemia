@@ -9,7 +9,7 @@ const ForumReportModel = require("../models/ForumReport");
 const mongoose = require("mongoose");
 const { slugify } = require("../helpers/slugify");
 
-const { FREE_PDF_LIMIT, PREMIUM_PRICE } = require("../config/premium");
+const { getAppSettings, getPremiumPrice, getFreePdfLimit } = require("../lib/appSettings");
 const { fetchPaymentFees } = require("../lib/asaas/paymentFees");
 
 const MONGO_LIMIT_MB = 512;
@@ -39,6 +39,8 @@ async function syncMissingPaymentFees(limit = 20) {
 
 async function getFinancialSummary() {
   await syncMissingPaymentFees();
+  const settings = await getAppSettings();
+  const fallbackPrice = settings.premiumPrice;
 
   const [paidAgg, pendingAgg, premiumUsers] = await Promise.all([
     PixPaymentModel.aggregate([
@@ -46,7 +48,7 @@ async function getFinancialSummary() {
       {
         $group: {
           _id: null,
-          gross: { $sum: { $ifNull: ["$amount", PREMIUM_PRICE] } },
+          gross: { $sum: { $ifNull: ["$amount", fallbackPrice] } },
           net: { $sum: { $ifNull: ["$netAmount", 0] } },
           fees: { $sum: { $ifNull: ["$feeAmount", 0] } },
           paidWithFees: {
@@ -61,7 +63,7 @@ async function getFinancialSummary() {
       {
         $group: {
           _id: null,
-          gross: { $sum: { $ifNull: ["$amount", PREMIUM_PRICE] } },
+          gross: { $sum: { $ifNull: ["$amount", fallbackPrice] } },
           count: { $sum: 1 },
         },
       },
@@ -73,7 +75,7 @@ async function getFinancialSummary() {
   const pending = pendingAgg[0] || {};
 
   return {
-    pixPrice: PREMIUM_PRICE,
+    pixPrice: fallbackPrice,
     received: {
       gross: paid.gross ?? 0,
       net: paid.net ?? 0,
@@ -156,9 +158,8 @@ class AdminController {
         Math.round((estimatedStorageMB / MONGO_LIMIT_MB) * 100)
       );
 
-      const revenue = pixPaid * PREMIUM_PRICE;
-
       const financial = await getFinancialSummary();
+      const revenue = financial.received.gross;
 
       res.status(200).json({
         users: { total: totalUsers, newLast7Days: newUsers7d },
@@ -257,6 +258,8 @@ class AdminController {
       if (!user) return res.status(404).json({ msg: "Usuário não encontrado" });
 
       if (is_premium) {
+        const premiumPrice = await getPremiumPrice();
+
         await PixPaymentModel.findOneAndUpdate(
           { userId: id, status: "generated" },
           { status: "paid", paidAt: new Date() },
@@ -267,7 +270,7 @@ class AdminController {
         if (!hasPaid) {
           await PixPaymentModel.create({
             userId: id,
-            amount: PREMIUM_PRICE,
+            amount: premiumPrice,
             status: "paid",
             paidAt: new Date(),
           });

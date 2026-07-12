@@ -1,6 +1,6 @@
 const UserModel = require("../models/User");
 const PixPaymentModel = require("../models/PixPayment");
-const { PREMIUM_PRICE } = require("../config/premium");
+const { getPremiumPrice, pricesMatch } = require("../lib/appSettings");
 const { getOrCreateCustomer } = require("../lib/asaas/customer");
 const { isValidCpf } = require("../lib/asaas/cpf");
 const {
@@ -34,12 +34,14 @@ class PaymentController {
         return res.status(400).json({ msg: "Você já tem acesso premium" });
       }
 
+      const premiumPrice = await getPremiumPrice();
+
       let record = await PixPaymentModel.findOne({
         userId,
         paymentMethod: "pix",
         status: "pending",
         asaasPaymentId: { $ne: null },
-        amount: PREMIUM_PRICE,
+        amount: premiumPrice,
         createdAt: { $gte: new Date(Date.now() - PIX_REUSE_MS) },
       }).sort({ createdAt: -1 });
 
@@ -47,7 +49,7 @@ class PaymentController {
 
       if (paymentId) {
         const remote = await getPayment(paymentId);
-        const priceOk = Number(remote.value) === PREMIUM_PRICE;
+        const priceOk = pricesMatch(remote.value, premiumPrice);
 
         if (priceOk && isPaymentPaid(remote.status)) {
           await activatePremium(userId, {
@@ -68,7 +70,7 @@ class PaymentController {
             encodedImage: qr.encodedImage,
             payload: qr.payload,
             expirationDate: qr.expirationDate,
-            amount: PREMIUM_PRICE,
+            amount: premiumPrice,
             sandbox: isSandbox(),
           });
         }
@@ -86,20 +88,20 @@ class PaymentController {
         });
       }
 
-      const payment = await createPixPayment(customerId.customerId, userId);
+      const payment = await createPixPayment(customerId.customerId, userId, premiumPrice);
       paymentId = payment.id;
 
       const qr = await getPixQrCode(paymentId);
 
       if (record) {
         record.asaasPaymentId = paymentId;
-        record.amount = PREMIUM_PRICE;
+        record.amount = premiumPrice;
         record.status = "pending";
         await record.save();
       } else {
         await PixPaymentModel.create({
           userId,
-          amount: PREMIUM_PRICE,
+          amount: premiumPrice,
           status: "pending",
           paymentMethod: "pix",
           asaasPaymentId: paymentId,
@@ -111,7 +113,7 @@ class PaymentController {
         encodedImage: qr.encodedImage,
         payload: qr.payload,
         expirationDate: qr.expirationDate,
-        amount: PREMIUM_PRICE,
+        amount: premiumPrice,
         sandbox: isSandbox(),
       });
     } catch (error) {
@@ -133,12 +135,14 @@ class PaymentController {
         return res.status(400).json({ msg: "Você já tem acesso premium" });
       }
 
+      const premiumPrice = await getPremiumPrice();
+
       const recentPending = await PixPaymentModel.findOne({
         userId,
         paymentMethod: "card",
         status: "pending",
         checkoutUrl: { $ne: null },
-        amount: PREMIUM_PRICE,
+        amount: premiumPrice,
         createdAt: { $gte: new Date(Date.now() - 55 * 60 * 1000) },
       }).sort({ createdAt: -1 });
 
@@ -152,13 +156,13 @@ class PaymentController {
           userId,
           paymentMethod: "card",
           status: "pending",
-          amount: { $ne: PREMIUM_PRICE },
+          amount: { $ne: premiumPrice },
         },
         { $set: { status: "generated", checkoutUrl: null, asaasCheckoutId: null } }
       );
 
       const appUrl = process.env.APP_URL || "https://app.gestaglic.com.br";
-      const checkout = await createCardCheckout(userId, appUrl);
+      const checkout = await createCardCheckout(userId, appUrl, premiumPrice);
       const checkoutUrl = buildCheckoutUrl(checkout);
 
       let payment = await PixPaymentModel.findOne({
@@ -173,12 +177,12 @@ class PaymentController {
         payment.paymentMethod = "card";
         payment.asaasCheckoutId = checkout.id;
         payment.checkoutUrl = checkoutUrl;
-        payment.amount = PREMIUM_PRICE;
+        payment.amount = premiumPrice;
         await payment.save();
       } else {
         await PixPaymentModel.create({
           userId,
-          amount: PREMIUM_PRICE,
+          amount: premiumPrice,
           status: "pending",
           paymentMethod: "card",
           asaasCheckoutId: checkout.id,

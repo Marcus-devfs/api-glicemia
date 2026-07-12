@@ -1,6 +1,6 @@
 const UserModel = require("../../models/User");
 const PixPaymentModel = require("../../models/PixPayment");
-const { PREMIUM_PRICE } = require("../../config/premium");
+const { getPremiumPrice } = require("../../lib/appSettings");
 const {
   extractFeesFromAsaasPayment,
   fetchPaymentFees,
@@ -54,9 +54,10 @@ async function activatePremium(
   );
 
   if (!updated) {
+    const fallbackPrice = await getPremiumPrice();
     await PixPaymentModel.create({
       userId,
-      amount: feeData.amount || PREMIUM_PRICE,
+      amount: feeData.amount || fallbackPrice,
       netAmount: feeData.netAmount ?? null,
       feeAmount: feeData.feeAmount ?? null,
       status: "paid",

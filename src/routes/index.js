@@ -8,6 +8,7 @@ const AdminController = require('../controllers/AdminController')
 const ContentController = require('../controllers/ContentController')
 const ForumController = require('../controllers/ForumController')
 const PaymentController = require('../controllers/PaymentController')
+const SettingsController = require('../controllers/SettingsController')
 const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
@@ -35,6 +36,9 @@ routes.post('/payments/card-checkout', checkAuth, PaymentController.createCardCh
 routes.post('/payments/checkout', checkAuth, PaymentController.createCardCheckout)
 routes.get('/payments/premium-status', checkAuth, PaymentController.getPremiumStatus)
 
+// Configurações públicas (preço premium)
+routes.get('/settings/premium', SettingsController.getPremiumSettings)
+
 //Marking Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)
 routes.get('/marking/list/media/:userId', checkAuth, MedicaoController.listMedia)
@@ -61,6 +65,8 @@ routes.get('/admin/users/:id', checkAuth, checkAdmin, AdminController.getUserDet
 routes.patch('/admin/users/:id/premium', checkAuth, checkAdmin, AdminController.setPremium)
 routes.get('/admin/financial/summary', checkAuth, checkAdmin, AdminController.financialSummary)
 routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayments)
+routes.get('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.getPremiumSettingsAdmin)
+routes.patch('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.updatePremiumSettings)
 
 // Conteúdo público (blog/dicas)
 routes.get('/articles', ContentController.listArticles)

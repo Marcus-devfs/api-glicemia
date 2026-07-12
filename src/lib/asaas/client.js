@@ -1,4 +1,4 @@
-const { PREMIUM_PRICE } = require("../../config/premium");
+const { PREMIUM_PRICE: DEFAULT_PREMIUM_PRICE } = require("../../config/premium");
 
 /** PNG 1x1 transparente — exigido pelo checkout Asaas em items.imageBase64 */
 const PLACEHOLDER_IMAGE_BASE64 =
@@ -66,7 +66,7 @@ function buildCheckoutUrl(checkout) {
 }
 
 /** Checkout hospedado — somente cartão de crédito */
-async function createCardCheckout(userId, appUrl) {
+async function createCardCheckout(userId, appUrl, premiumPrice = DEFAULT_PREMIUM_PRICE) {
   const payload = {
     billingTypes: ["CREDIT_CARD"],
     chargeTypes: ["DETACHED"],
@@ -82,7 +82,7 @@ async function createCardCheckout(userId, appUrl) {
         name: "GestaGlic Premium",
         description: "PDFs ilimitados na gestacao",
         quantity: 1,
-        value: PREMIUM_PRICE,
+        value: premiumPrice,
         imageBase64: PLACEHOLDER_IMAGE_BASE64,
       },
     ],
@@ -92,11 +92,11 @@ async function createCardCheckout(userId, appUrl) {
 }
 
 /** Cobrança Pix transparente */
-async function createPixPayment(customerId, userId) {
+async function createPixPayment(customerId, userId, premiumPrice = DEFAULT_PREMIUM_PRICE) {
   return asaasRequest("POST", "/payments", {
     customer: customerId,
     billingType: "PIX",
-    value: PREMIUM_PRICE,
+    value: premiumPrice,
     dueDate: dueDatePlusDays(1),
     externalReference: userId.toString(),
     description: "GestaGlic Premium - PDFs ilimitados",

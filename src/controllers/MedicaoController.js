@@ -77,9 +77,7 @@ class MedicaoController {
          const { makingId } = req.params
          const { marking } = req.body
          if (marking.date) {
-            const markingDate = new Date(marking?.date);
-            markingDate.setHours(12, 0, 0, 0);
-            marking.date = markingDate;
+            marking.date = new Date(marking.date + "T12:00:00Z");
          }
 
          if (parseInt(marking?.diet) > 0) {

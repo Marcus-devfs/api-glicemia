@@ -134,7 +134,14 @@ Para validar só o webhook sem gastar: no painel Asaas, abra o webhook e use “
 
 ## Preço e limite
 
-`src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 14.9`
+O preço **ativo** fica no MongoDB (`AppSettings`) e pode ser alterado em **Admin → Financeiro** sem redeploy.
+
+Valores padrão na 1ª execução: `src/config/premium.js` → `FREE_PDF_LIMIT = 5`, `PREMIUM_PRICE = 14.9`
+
+| Endpoint | Descrição |
+|----------|-----------|
+| GET | `/settings/premium` | App lê preço e limite (público) |
+| GET/PATCH | `/admin/settings/premium` | Admin lê/altera |
 
 **Importante:** ao mudar o preço, checkouts/cobranças pendentes no Asaas mantêm o valor antigo. A API só reutiliza sessões com o preço atual; senão gera nova cobrança.
 
