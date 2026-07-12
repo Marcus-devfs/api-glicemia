@@ -24,6 +24,92 @@ APP_URL=https://app.gestaglic.com.br
 
 **Produção:** troque a chave por `$aact_prod_...` e `ASAAS_SANDBOX=false`.
 
+`ASAAS_WALLET_ID` está no `.env.example` mas **não é usado** pelo código — pode omitir.
+
+---
+
+## Checklist — Asaas em produção
+
+### 1. Conta Asaas (painel **produção**, não sandbox)
+
+1. Acesse [https://www.asaas.com](https://www.asaas.com) (conta real, não sandbox.asaas.com).
+2. Complete o cadastro comercial:
+   - Dados da empresa ou MEI (CNPJ/CPF)
+   - Documentos e conta bancária para **saque** do saldo
+3. Confirme que estão habilitados:
+   - **Pix** (recebimento)
+   - **Cartão de crédito** (checkout)
+4. Gere a chave de API de produção:
+   - **Integrações** → **API** → copiar chave que começa com `$aact_prod_...`
+
+> Enquanto a conta estiver em análise, cobranças reais podem falhar ou ficar retidas.
+
+### 2. Variáveis no Railway (API)
+
+No serviço **api-glicemia**, configure:
+
+```env
+ASAAS_API_KEY=$aact_prod_xxxxxxxx
+ASAAS_SANDBOX=false
+ASAAS_WEBHOOK_TOKEN=um-token-longo-aleatorio-min-32-chars
+APP_URL=https://app.gestaglic.com.br
+```
+
+| Variável | Sandbox | Produção |
+|----------|---------|----------|
+| `ASAAS_API_KEY` | `$aact_hmlg_...` | `$aact_prod_...` |
+| `ASAAS_SANDBOX` | `true` | **`false`** |
+| `ASAAS_WEBHOOK_TOKEN` | qualquer string | **mesmo token do webhook no painel** |
+| `APP_URL` | localhost ou app prod | **`https://app.gestaglic.com.br`** |
+
+**Importante:** não misture chave de produção com `ASAAS_SANDBOX=true` — a API pode apontar para o ambiente errado.
+
+Depois de salvar → **Redeploy** do serviço no Railway.
+
+### 3. Webhook de **produção** (obrigatório)
+
+No painel Asaas **produção** (Integrações → Webhooks):
+
+| Campo | Valor |
+|-------|--------|
+| **URL** | `https://SUA-API-PRODUCAO.railway.app/payments/webhook/asaas` |
+| **Token de autenticação** | igual a `ASAAS_WEBHOOK_TOKEN` no Railway |
+| **Eventos** | `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `CHECKOUT_PAID` |
+
+A API valida o header `asaas-access-token` enviado pelo Asaas.
+
+**Dica:** use a URL pública do Railway (ou domínio customizado da API, se tiver). Teste no navegador — deve responder JSON, não 404.
+
+O webhook do **sandbox** é separado; em produção crie um webhook novo no painel de produção.
+
+### 4. O que **não** precisa mudar no código
+
+- Preço: `src/config/premium.js` → `PREMIUM_PRICE = 14.9`
+- Rotas Pix/cartão/webhook já existem
+- CPF só no fluxo Pix (checkout transparente)
+
+### 5. Clientes Asaas no MongoDB
+
+Usuárias que pagaram no **sandbox** podem ter `asaasCustomerId` salvo no User. Em produção o Asaas cria/vincula cliente novo pelo e-mail — em geral funciona sozinho. Se Pix falhar com cliente inválido, no admin ou MongoDB limpe `asaasCustomerId` da usuária e tente de novo.
+
+### 6. Teste pós-deploy (produção)
+
+1. Com conta de teste sua, esgote os 5 PDFs grátis (ou use usuária de teste).
+2. **Pix:** gerar QR → pagar de verdade (R$ 14,90) → premium libera (webhook ou botão “Já paguei”).
+3. **Cartão:** abrir checkout → valor **R$ 14,90** → pagar → redirect `?premium=success`.
+4. Admin → **Financeiro:** conferir pagamento `paid` com bruto/líquido/taxa.
+
+Para validar só o webhook sem gastar: no painel Asaas, abra o webhook e use “Enviar teste” (se disponível) ou faça um Pix mínimo real.
+
+### 7. Dev local vs produção
+
+| Ambiente | Onde |
+|----------|------|
+| Local (`.env`) | Pode manter sandbox (`ASAAS_SANDBOX=true` + chave hmlg) |
+| Railway | Só produção (`ASAAS_SANDBOX=false` + chave prod) |
+
+---
+
 ## Webhook (Pix + cartão)
 
 1. Asaas → **Integrações** → **Webhooks**
