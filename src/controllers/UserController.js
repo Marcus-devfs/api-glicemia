@@ -1,12 +1,15 @@
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const UserModel = require('../models/User')
+const MedicaoModel = require('../models/Medicao')
 const bcrypt = require('bcrypt')
 const { sendMail } = require('../lib/email/sendMail')
 const { passwordResetHtml } = require('../lib/email/templates/passwordReset')
 const PixPaymentModel = require('../models/PixPayment')
 const { logAccess } = require('../lib/accessLog')
 const { getAppSettings } = require('../lib/appSettings')
+const { assertUserId } = require('../helpers/auth/assertOwner')
+const { getJwtSecret, JWT_EXPIRES_IN } = require('../helpers/auth/jwtSecret')
 
 class UserController {
 
@@ -29,6 +32,14 @@ class UserController {
             return res.status(400).json({ msg: 'Missing required fields' })
          }
 
+         if (!userData.acceptedTerms || !userData.acceptedPrivacy || !userData.acceptedHealthData) {
+            return res.status(400).json({ msg: 'Consentimentos obrigatórios' })
+         }
+
+         if (password && password.length < 6) {
+            return res.status(400).json({ msg: 'Senha deve ter pelo menos 6 caracteres' })
+         }
+
          const normalizedEmail = email.trim().toLowerCase()
 
          let senha = password
@@ -47,10 +58,27 @@ class UserController {
          const salt = await bcrypt.genSalt(10)
          const passwordHash = await bcrypt.hash(senha, salt)
 
+         const now = new Date()
+         const {
+            acceptedTerms: _t,
+            acceptedPrivacy: _p,
+            acceptedHealthData: _h,
+            password: _passwordField,
+            ...profileData
+         } = userData
+
          const newUser = await UserModel.create({
-            ...userData,
+            name: profileData.name,
             email: normalizedEmail,
+            telephone: profileData.telephone ?? null,
+            gender: profileData.gender ?? null,
+            birthDate: profileData.birthDate ?? null,
             password: passwordHash,
+            consents: {
+               termsAt: now,
+               privacyAt: now,
+               healthDataAt: now,
+            },
          })
 
          let html = `
@@ -104,7 +132,8 @@ class UserController {
             {
                userId: user._id,
             },
-            process.env.NEXT_PUBLIC_JWT_KEY,
+            getJwtSecret(),
+            { expiresIn: JWT_EXPIRES_IN },
          )
          user.token = jwtToken
 
@@ -120,6 +149,7 @@ class UserController {
    readById = async (req, res) => {
       try {
          const { id } = req.params
+         if (!assertUserId(req, res, id)) return
          const user = await UserModel.findById(id).populate('photoPerfil')
          res.status(200).json(user)
       } catch (error) {
@@ -134,7 +164,7 @@ class UserController {
          const user = await UserModel.findOne({ _id: userId }).populate('photoPerfil')
 
          if (user) {
-            const jwtToken = jwt.sign({ userId: user._id }, process.env.NEXT_PUBLIC_JWT_KEY);
+            const jwtToken = jwt.sign({ userId: user._id }, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
             user.token = jwtToken
             logAccess(req, user._id, 'session_restore')
             return res.status(200).json(user)
@@ -149,10 +179,23 @@ class UserController {
    delete = async (req, res) => {
       try {
          const { id } = req.params
+         if (!assertUserId(req, res, id)) return
+         await MedicaoModel.deleteMany({ userId: id })
          const deletedUser = await UserModel.findByIdAndDelete(id).exec()
          res.status(201).json(deletedUser)
       } catch (error) {
          res.status(400).json({ error })
+      }
+   }
+
+   deleteMe = async (req, res) => {
+      try {
+         const userId = req.currentUser.userId
+         await MedicaoModel.deleteMany({ userId })
+         await UserModel.findByIdAndDelete(userId)
+         res.status(200).json({ msg: 'Conta excluída com sucesso' })
+      } catch (error) {
+         res.status(500).json({ msg: 'Erro ao excluir conta' })
       }
    }
 
@@ -209,6 +252,7 @@ class UserController {
       const { passwordData } = req.body
 
       try {
+         if (!assertUserId(req, res, id)) return
 
          const user = await UserModel.findById(id)
             .select('+password')

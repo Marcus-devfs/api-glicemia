@@ -119,6 +119,12 @@ const userSchema = new Schema({
       select: false,
       default: null,
    },
+
+   consents: {
+      termsAt: { type: Date, default: null },
+      privacyAt: { type: Date, default: null },
+      healthDataAt: { type: Date, default: null },
+   },
 });
 
 const User = mongoose.model("User", userSchema);

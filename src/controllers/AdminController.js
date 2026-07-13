@@ -94,7 +94,10 @@ async function getFinancialSummary() {
 class AdminController {
   dashboard = async (req, res) => {
     try {
+      const chartDays = Math.min(90, Math.max(7, parseInt(req.query.days, 10) || 30));
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const chartSince = new Date(Date.now() - chartDays * 24 * 60 * 60 * 1000);
+      chartSince.setHours(0, 0, 0, 0);
 
       const [
         totalUsers,
@@ -110,6 +113,10 @@ class AdminController {
         logins7d,
         pdfDownloads7d,
         activeUsers7d,
+        usersByDay,
+        medicoesByDay,
+        loginsByDay,
+        registrationsByDay,
       ] = await Promise.all([
         UserModel.countDocuments(),
         UserModel.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
@@ -135,6 +142,56 @@ class AdminController {
         AccessLogModel.distinct("userId", {
           createdAt: { $gte: sevenDaysAgo },
         }),
+        UserModel.aggregate([
+          { $match: { createdAt: { $gte: chartSince } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+              count: { $sum: 1 },
+            },
+          },
+          { $project: { _id: 0, date: "$_id", count: 1 } },
+        ]),
+        MedicaoModel.aggregate([
+          { $match: { date: { $gte: chartSince } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+              count: { $sum: 1 },
+            },
+          },
+          { $project: { _id: 0, date: "$_id", count: 1 } },
+        ]),
+        AccessLogModel.aggregate([
+          {
+            $match: {
+              action: "login",
+              createdAt: { $gte: chartSince },
+            },
+          },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+              count: { $sum: 1 },
+            },
+          },
+          { $project: { _id: 0, date: "$_id", count: 1 } },
+        ]),
+        AccessLogModel.aggregate([
+          {
+            $match: {
+              action: "register",
+              createdAt: { $gte: chartSince },
+            },
+          },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+              count: { $sum: 1 },
+            },
+          },
+          { $project: { _id: 0, date: "$_id", count: 1 } },
+        ]),
       ]);
 
       let storageSizeMB = null;
@@ -161,8 +218,32 @@ class AdminController {
       const financial = await getFinancialSummary();
       const revenue = financial.received.gross;
 
+      const dayMap = new Map();
+      const ensureDay = (date) => {
+        if (!dayMap.has(date)) {
+          dayMap.set(date, {
+            date,
+            newUsers: 0,
+            medicoes: 0,
+            logins: 0,
+            registrations: 0,
+          });
+        }
+        return dayMap.get(date);
+      };
+
+      for (const row of usersByDay) ensureDay(row.date).newUsers = row.count;
+      for (const row of medicoesByDay) ensureDay(row.date).medicoes = row.count;
+      for (const row of loginsByDay) ensureDay(row.date).logins = row.count;
+      for (const row of registrationsByDay) ensureDay(row.date).registrations = row.count;
+
+      const activityByDay = Array.from(dayMap.values()).sort((a, b) =>
+        a.date.localeCompare(b.date)
+      );
+
       res.status(200).json({
-        users: { total: totalUsers, newLast7Days: newUsers7d },
+        chartDays,
+        users: { total: totalUsers, newLast7Days: newUsers7d, premium: premiumUsers },
         infra: {
           totalDocuments,
           users: totalUsers,
@@ -198,6 +279,7 @@ class AdminController {
           enabled: notificationsEnabled,
           pushSubscriptions: pushSubscriptionsAgg[0]?.total ?? 0,
         },
+        activityByDay,
       });
     } catch (error) {
       console.log("admin dashboard error:", error);

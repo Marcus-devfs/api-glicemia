@@ -4,6 +4,7 @@ const MedicaoModel = require("../models/Medicao");
 const ShareReportModel = require("../models/ShareReport");
 const {
   computeReportStats,
+  filterMarkingsSince,
   getGestationalWeek,
   sanitizePatientName,
   getTargets,
@@ -91,19 +92,14 @@ class ReportController {
       const user = await UserModel.findById(share.userId);
       if (!user) return res.status(404).json({ msg: "Relatório não encontrado" });
 
-      const markings = await MedicaoModel.find({ userId: user._id }).sort({ date: -1 });
-      const stats = computeReportStats(markings, user, SHARE_DAYS);
-      const recentMarkings = markings
-        .filter((m) => {
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - SHARE_DAYS);
-          return new Date(m.date) >= cutoff;
-        })
-        .map((m) => ({
-          date: m.date,
-          period: m.period,
-          value: m.value,
-        }));
+      const allMarkings = await MedicaoModel.find({ userId: user._id }).sort({ date: -1 });
+      const recentMarkings = filterMarkingsSince(allMarkings, SHARE_DAYS);
+      const stats = computeReportStats(recentMarkings, user, SHARE_DAYS);
+      const sharedMarkings = recentMarkings.map((m) => ({
+        date: m.date,
+        period: m.period,
+        value: m.value,
+      }));
 
       res.status(200).json({
         patientName: sanitizePatientName(user.name),
@@ -114,7 +110,7 @@ class ReportController {
         },
         targets: getTargets(user),
         stats,
-        markings: recentMarkings,
+        markings: sharedMarkings,
         expiresAt: share.expiresAt,
         generatedAt: new Date().toISOString(),
       });

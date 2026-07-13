@@ -1,10 +1,16 @@
 const FileUser = require('../models/FileUser')
 const User = require('../models/User')
+const { assertUserId } = require('../helpers/auth/assertOwner')
 
 exports.upload = async (req, res) => {
-    const { originalName: name, size, key, location: url = '' } = req.file
+    if (!req.file) {
+        return res.status(400).json({ msg: 'Arquivo não enviado' })
+    }
 
+    const { originalName: name, size, key, location: url = '' } = req.file
     const { userId = null } = req.query
+
+    if (!userId || !assertUserId(req, res, userId)) return
 
     const fileUserData = await FileUser.findOne({ userId: userId })
 
@@ -22,7 +28,7 @@ exports.upload = async (req, res) => {
 
 
     if (fileId) {
-        const deleteFile = await FileUser.findByIdAndDelete(fileId)
+        await FileUser.findByIdAndDelete(fileId)
         await User.findByIdAndUpdate(userId, { $pull: { photoPerfil: fileId } }, { new: true })
     }
 

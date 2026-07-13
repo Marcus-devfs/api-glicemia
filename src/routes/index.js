@@ -23,8 +23,8 @@ routes.get('/', async (req, res) => {
 routes.post('/user/login', UserController.login)
 routes.post('/user/forgot-password', UserController.forgotPassword)
 routes.post('/user/reset-password', UserController.resetPassword)
-routes.get('/user/list', checkAuth, UserController.list)
 routes.post('/user/create', UserController.add)
+routes.delete('/user/me', checkAuth, UserController.deleteMe)
 routes.get('/user/:id', checkAuth, UserController.readById)
 routes.post('/user/loginToken', checkAuth, UserController.loginByToken)
 routes.delete('/user/:id', checkAuth, UserController.delete)
@@ -65,7 +65,7 @@ routes.delete('/marking/delete/:makingId', checkAuth, MedicaoController.delete)
 routes.patch('/marking/update/:makingId', checkAuth, MedicaoController.update)
 
 //FileUser
-routes.post('/file/upload', multer(multerConfig).single('file'), FileUserController.upload)
+routes.post('/file/upload', checkAuth, multer(multerConfig).single('file'), FileUserController.upload)
 
 // Push notifications
 routes.get('/push/vapid-key', PushController.getVapidKey)
