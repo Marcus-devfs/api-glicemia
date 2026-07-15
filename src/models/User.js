@@ -65,6 +65,10 @@ const userSchema = new Schema({
          time: String,
          label: String,
       }],
+      dismissedAnnouncementIds: [{
+         type: mongoose.Schema.Types.ObjectId,
+         ref: "Announcement",
+      }],
    },
 
    pregnancy: {

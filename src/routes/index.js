@@ -12,6 +12,7 @@ const SettingsController = require('../controllers/SettingsController')
 const FeedbackController = require('../controllers/FeedbackController')
 const ReportController = require('../controllers/ReportController')
 const LpAnalyticsController = require('../controllers/LpAnalyticsController')
+const AnnouncementController = require('../controllers/AnnouncementController')
 const { checkAdmin } = require('../helpers/auth/checkAdmin')
 const multer = require('multer')
 const multerConfig = require('../config/multer')
@@ -57,6 +58,10 @@ routes.post('/track/lp', LpAnalyticsController.track)
 // Feedback (usuária logada)
 routes.post('/feedback', checkAuth, FeedbackController.create)
 
+// Novidades / campanhas in-app
+routes.get('/announcements/active', checkAuth, AnnouncementController.listActive)
+routes.post('/announcements/:id/dismiss', checkAuth, AnnouncementController.dismiss)
+
 //Marking Routes
 routes.get('/marking/list/:userId', checkAuth, MedicaoController.list)
 routes.get('/marking/list/media/:userId', checkAuth, MedicaoController.listMedia)
@@ -90,6 +95,10 @@ routes.patch('/admin/settings/premium', checkAuth, checkAdmin, SettingsControlle
 routes.get('/admin/feedback', checkAuth, checkAdmin, FeedbackController.listAdmin)
 routes.get('/admin/feedback/counts', checkAuth, checkAdmin, FeedbackController.countsAdmin)
 routes.patch('/admin/feedback/:id', checkAuth, checkAdmin, FeedbackController.updateStatus)
+routes.get('/admin/announcements', checkAuth, checkAdmin, AnnouncementController.listAdmin)
+routes.post('/admin/announcements', checkAuth, checkAdmin, AnnouncementController.createAdmin)
+routes.patch('/admin/announcements/:id', checkAuth, checkAdmin, AnnouncementController.updateAdmin)
+routes.delete('/admin/announcements/:id', checkAuth, checkAdmin, AnnouncementController.deleteAdmin)
 routes.get('/admin/lp/metrics', checkAuth, checkAdmin, LpAnalyticsController.metrics)
 
 // Conteúdo público (blog/dicas)
