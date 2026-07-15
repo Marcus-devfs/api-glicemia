@@ -70,6 +70,12 @@ const userSchema = new Schema({
    pregnancy: {
       dueDate: { type: Date, default: null },
       fetusCount: { type: Number, default: 1, min: 1, max: 4 },
+      babyName: { type: String, default: null, maxlength: 80, trim: true },
+      babySex: {
+         type: String,
+         enum: ["feminino", "masculino", "nao_informado"],
+         default: "nao_informado",
+      },
    },
 
    glucoseTargets: {

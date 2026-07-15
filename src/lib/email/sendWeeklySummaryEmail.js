@@ -17,6 +17,8 @@ async function sendWeeklySummaryEmail(user, stats) {
       appUrl,
       gestationalWeek,
       fetusCount: user.pregnancy?.fetusCount || 1,
+      babyName: user.pregnancy?.babyName || null,
+      babySex: user.pregnancy?.babySex || "nao_informado",
     }),
   });
 }

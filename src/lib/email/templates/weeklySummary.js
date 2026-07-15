@@ -1,6 +1,14 @@
-function weeklySummaryHtml({ name, stats, appUrl, gestationalWeek, fetusCount }) {
-  const firstName = name?.split(" ")[0] || "Olá";
+function weeklySummaryHtml({ name, stats, appUrl, gestationalWeek, fetusCount, babyName, babySex }) {
+  const firstName = name?.split(" ")[0] || "";
   const reportUrl = `${appUrl}/relatorio`;
+
+  let hello = firstName ? `Oi, ${firstName}! 👋` : "Oi! 👋";
+  const baby = String(babyName || "").trim();
+  if (baby) {
+    const article =
+      babySex === "feminino" ? `da ${baby}` : babySex === "masculino" ? `do ${baby}` : `de ${baby}`;
+    hello = `Oi, mamãe ${article}! 💗`;
+  }
 
   const periodRows = (stats.byPeriod || [])
     .filter((p) => p.count > 0)
@@ -30,7 +38,7 @@ function weeklySummaryHtml({ name, stats, appUrl, gestationalWeek, fetusCount })
       <p style="margin:6px 0 0;color:#fce7f3;font-size:13px">Resumo semanal da glicemia</p>
     </div>
     <div style="padding:28px 24px">
-      <p style="margin:0 0 12px;color:#374151;font-size:16px">Oi, ${firstName}! 👋</p>
+      <p style="margin:0 0 12px;color:#374151;font-size:16px">${hello}</p>
       ${gestationLine}
       <p style="margin:0 0 20px;color:#6b7280;font-size:14px;line-height:1.6">
         Seu resumo dos <strong>últimos 7 dias</strong> está pronto. Use na consulta ou abra o app para mais detalhes.

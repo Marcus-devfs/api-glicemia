@@ -216,9 +216,23 @@ class UserController {
          if (body.name != null) update.name = String(body.name).trim()
 
          if (body.pregnancy != null) {
+            const allowedSex = ["feminino", "masculino", "nao_informado"]
+            const incomingSex = body.pregnancy.babySex
+            const babySex = allowedSex.includes(incomingSex)
+               ? incomingSex
+               : (user.pregnancy?.babySex || "nao_informado")
+
+            let babyName = user.pregnancy?.babyName || null
+            if (body.pregnancy.babyName !== undefined) {
+               const trimmed = String(body.pregnancy.babyName || "").trim().slice(0, 80)
+               babyName = trimmed || null
+            }
+
             update.pregnancy = {
                dueDate: body.pregnancy.dueDate ? new Date(body.pregnancy.dueDate) : null,
                fetusCount: Math.min(4, Math.max(1, Number(body.pregnancy.fetusCount) || 1)),
+               babyName,
+               babySex,
             }
          }
 
