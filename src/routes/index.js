@@ -86,6 +86,7 @@ routes.get('/admin/payments', checkAuth, checkAdmin, AdminController.listPayment
 routes.get('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.getPremiumSettingsAdmin)
 routes.patch('/admin/settings/premium', checkAuth, checkAdmin, SettingsController.updatePremiumSettings)
 routes.get('/admin/feedback', checkAuth, checkAdmin, FeedbackController.listAdmin)
+routes.get('/admin/feedback/counts', checkAuth, checkAdmin, FeedbackController.countsAdmin)
 routes.patch('/admin/feedback/:id', checkAuth, checkAdmin, FeedbackController.updateStatus)
 routes.get('/admin/lp/metrics', checkAuth, checkAdmin, LpAnalyticsController.metrics)
 

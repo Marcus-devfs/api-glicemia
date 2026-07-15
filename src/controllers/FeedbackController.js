@@ -58,6 +58,20 @@ class FeedbackController {
     }
   };
 
+  countsAdmin = async (req, res) => {
+    try {
+      const [open, read, resolved] = await Promise.all([
+        FeedbackModel.countDocuments({ status: "open" }),
+        FeedbackModel.countDocuments({ status: "read" }),
+        FeedbackModel.countDocuments({ status: "resolved" }),
+      ]);
+      res.status(200).json({ open, read, resolved, total: open + read + resolved });
+    } catch (error) {
+      console.log("feedback countsAdmin error:", error);
+      res.status(500).json({ msg: "Erro ao contar feedback" });
+    }
+  };
+
   updateStatus = async (req, res) => {
     try {
       const { status } = req.body;

@@ -6,6 +6,7 @@ const ArticleModel = require("../models/Article");
 const ForumPostModel = require("../models/ForumPost");
 const ForumCommentModel = require("../models/ForumComment");
 const ForumReportModel = require("../models/ForumReport");
+const FeedbackModel = require("../models/Feedback");
 const mongoose = require("mongoose");
 const { slugify } = require("../helpers/slugify");
 
@@ -117,6 +118,7 @@ class AdminController {
         medicoesByDay,
         loginsByDay,
         registrationsByDay,
+        openFeedbacks,
       ] = await Promise.all([
         UserModel.countDocuments(),
         UserModel.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
@@ -192,6 +194,7 @@ class AdminController {
           },
           { $project: { _id: 0, date: "$_id", count: 1 } },
         ]),
+        FeedbackModel.countDocuments({ status: "open" }),
       ]);
 
       let storageSizeMB = null;
@@ -278,6 +281,9 @@ class AdminController {
         notifications: {
           enabled: notificationsEnabled,
           pushSubscriptions: pushSubscriptionsAgg[0]?.total ?? 0,
+        },
+        feedback: {
+          open: openFeedbacks,
         },
         activityByDay,
       });

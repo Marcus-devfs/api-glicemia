@@ -17,13 +17,14 @@ function getTargets(user) {
 }
 
 function getGlucoseStatus(value, period, targets = DEFAULT_TARGETS) {
+  // Metas gestacionais são limites superiores ("menor que"): no limite ou acima = fora da meta.
   if (period === JEJUM_PERIOD) {
     if (value < targets.jejum) return "normal";
-    if (value <= targets.jejum + 10) return "warning";
+    if (value < targets.jejum + 10) return "warning";
     return "danger";
   }
   if (value < targets.pos1h) return "normal";
-  if (value <= targets.pos1h + 20) return "warning";
+  if (value < targets.pos1h + 20) return "warning";
   return "danger";
 }
 
