@@ -1,5 +1,5 @@
 const User = require("../../models/User");
-const { sendPushNotification } = require("./webPush");
+const { sendPushToUser } = require("./sendPushToUser");
 const { buildPushPayload } = require("./messages");
 const { evaluateMealReminders, hasMeasurementToday } = require("./scheduler");
 
@@ -54,22 +54,16 @@ async function processReminders(force = false) {
 
       matched++;
       const payload = buildPushPayload(user, reminder);
-      let userSent = 0;
+      const result = await sendPushToUser(user, payload, {
+        type: "meal_reminder",
+        period: reminder.period,
+        slotId: reminder.id,
+      });
 
-      for (const sub of user.pushSubscriptions) {
-        try {
-          await sendPushNotification(sub, payload);
-          sent++;
-          userSent++;
-        } catch {
-          failed++;
-          await User.findByIdAndUpdate(user._id, {
-            $pull: { pushSubscriptions: { endpoint: sub.endpoint } },
-          });
-        }
-      }
+      sent += result.sent || 0;
+      failed += result.failed || 0;
 
-      if (userSent > 0) {
+      if (result.sent > 0) {
         currentSentSlots = await markSlotSent(user._id, today, currentSentSlots, reminder.id);
       }
     }

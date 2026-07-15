@@ -7,6 +7,7 @@ const ForumPostModel = require("../models/ForumPost");
 const ForumCommentModel = require("../models/ForumComment");
 const ForumReportModel = require("../models/ForumReport");
 const FeedbackModel = require("../models/Feedback");
+const PushDeliveryModel = require("../models/PushDelivery");
 const mongoose = require("mongoose");
 const { slugify } = require("../helpers/slugify");
 
@@ -613,6 +614,85 @@ class AdminController {
     } catch (error) {
       console.log("admin resolveForumReport error:", error);
       res.status(500).json({ msg: "Erro ao resolver denúncia" });
+    }
+  };
+
+  notificationStats = async (req, res) => {
+    try {
+      const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const [totals, byStatus, byType, last24hCount, devicesAgg] = await Promise.all([
+        PushDeliveryModel.countDocuments({ createdAt: { $gte: since } }),
+        PushDeliveryModel.aggregate([
+          { $match: { createdAt: { $gte: since } } },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
+        ]),
+        PushDeliveryModel.aggregate([
+          { $match: { createdAt: { $gte: since } } },
+          { $group: { _id: "$type", count: { $sum: 1 } } },
+        ]),
+        PushDeliveryModel.countDocuments({ createdAt: { $gte: last24h } }),
+        PushDeliveryModel.aggregate([
+          { $match: { createdAt: { $gte: since } } },
+          {
+            $group: {
+              _id: null,
+              devicesSent: { $sum: "$devicesSent" },
+              devicesFailed: { $sum: "$devicesFailed" },
+            },
+          },
+        ]),
+      ]);
+
+      const statusMap = Object.fromEntries(byStatus.map((r) => [r._id, r.count]));
+      const typeMap = Object.fromEntries(byType.map((r) => [r._id, r.count]));
+
+      res.status(200).json({
+        days,
+        total: totals,
+        last24h: last24hCount,
+        byStatus: {
+          delivered: statusMap.delivered || 0,
+          partial: statusMap.partial || 0,
+          failed: statusMap.failed || 0,
+          skipped: statusMap.skipped || 0,
+        },
+        byType: typeMap,
+        devicesSent: devicesAgg[0]?.devicesSent || 0,
+        devicesFailed: devicesAgg[0]?.devicesFailed || 0,
+      });
+    } catch (error) {
+      console.log("admin notificationStats error:", error);
+      res.status(500).json({ msg: "Erro ao carregar estatísticas de notificações" });
+    }
+  };
+
+  listNotificationDeliveries = async (req, res) => {
+    try {
+      const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const filter = { createdAt: { $gte: since } };
+
+      if (req.query.type && ["meal_reminder", "premium_activated", "payment_pending", "checkout_reminder", "generic"].includes(req.query.type)) {
+        filter.type = req.query.type;
+      }
+      if (req.query.status && ["delivered", "partial", "failed", "skipped"].includes(req.query.status)) {
+        filter.status = req.query.status;
+      }
+
+      const items = await PushDeliveryModel.find(filter)
+        .populate("userId", "name email")
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+      res.status(200).json({ days, limit, items });
+    } catch (error) {
+      console.log("admin listNotificationDeliveries error:", error);
+      res.status(500).json({ msg: "Erro ao listar entregas" });
     }
   };
 }

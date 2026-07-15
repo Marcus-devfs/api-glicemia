@@ -17,7 +17,7 @@ async function sendPremiumActivatedPush(userId) {
   if (!user) return { sent: 0 };
 
   const payload = buildPremiumSuccessPayload(user);
-  return sendPushToUser(user, payload);
+  return sendPushToUser(user, payload, { type: "premium_activated" });
 }
 
 async function sendPaymentPendingPush(userId, { amount, method }) {
@@ -25,7 +25,10 @@ async function sendPaymentPendingPush(userId, { amount, method }) {
   if (!user || user.is_premium) return { sent: 0 };
 
   const payload = buildPaymentPendingPayload(user, { amount, method });
-  return sendPushToUser(user, payload);
+  return sendPushToUser(user, payload, {
+    type: "payment_pending",
+    paymentMethod: method,
+  });
 }
 
 async function processPaymentReminders(force = false) {
@@ -76,7 +79,11 @@ async function processPaymentReminders(force = false) {
     }
 
     const payload = buildCheckoutReminderPayload(user, payment);
-    const result = await sendPushToUser(user, payload);
+    const result = await sendPushToUser(user, payload, {
+      type: "checkout_reminder",
+      paymentMethod: payment.paymentMethod,
+      paymentId: payment._id,
+    });
 
     if (result.sent > 0) {
       await PixPayment.findByIdAndUpdate(payment._id, {

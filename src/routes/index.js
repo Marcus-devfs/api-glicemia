@@ -78,6 +78,8 @@ routes.post('/push/reminders', checkCron, PushController.sendReminders)
 // Admin
 routes.get('/admin/me', checkAuth, checkAdmin, AdminController.me)
 routes.get('/admin/dashboard', checkAuth, checkAdmin, AdminController.dashboard)
+routes.get('/admin/notifications/stats', checkAuth, checkAdmin, AdminController.notificationStats)
+routes.get('/admin/notifications/deliveries', checkAuth, checkAdmin, AdminController.listNotificationDeliveries)
 routes.get('/admin/users', checkAuth, checkAdmin, AdminController.listUsers)
 routes.get('/admin/users/:id', checkAuth, checkAdmin, AdminController.getUserDetail)
 routes.patch('/admin/users/:id/premium', checkAuth, checkAdmin, AdminController.setPremium)
