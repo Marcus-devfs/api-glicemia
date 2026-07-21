@@ -22,6 +22,7 @@ const lpEventSchema = new Schema({
   utmSource: { type: String, default: null, index: true },
   utmMedium: { type: String, default: null },
   utmCampaign: { type: String, default: null },
+  gclid: { type: String, default: null },
   referrer: { type: String, default: null },
   userAgent: { type: String, default: null },
   metadata: { type: Schema.Types.Mixed, default: null },

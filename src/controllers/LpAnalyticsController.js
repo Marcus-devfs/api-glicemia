@@ -65,8 +65,17 @@ function buildMatch(query, since, until) {
 class LpAnalyticsController {
   track = async (req, res) => {
     try {
-      const { event, path, sessionId, utmSource, utmMedium, utmCampaign, referrer, metadata } =
-        req.body;
+      const {
+        event,
+        path,
+        sessionId,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        gclid,
+        referrer,
+        metadata,
+      } = req.body;
 
       if (!LP_EVENT_TYPES.includes(event)) {
         return res.status(400).json({ msg: "Evento inválido" });
@@ -84,6 +93,7 @@ class LpAnalyticsController {
         utmSource: utmSource ? String(utmSource).slice(0, 128) : null,
         utmMedium: utmMedium ? String(utmMedium).slice(0, 128) : null,
         utmCampaign: utmCampaign ? String(utmCampaign).slice(0, 128) : null,
+        gclid: gclid ? String(gclid).slice(0, 128) : null,
         referrer: referrer ? String(referrer).slice(0, 512) : null,
         userAgent: req.headers["user-agent"] || null,
         metadata: metadata && typeof metadata === "object" ? metadata : null,
